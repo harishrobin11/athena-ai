@@ -1,0 +1,41 @@
+[project]
+name = "athena-ai"
+version = "0.1.0"
+description = "Enterprise AI Platform for Intelligent Finance Operations"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = { text = "MIT" }
+
+authors = [
+    { name = "Harish Robin H" }
+]
+
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "streamlit",
+    "sqlalchemy",
+    "psycopg2-binary",
+    "pydantic",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+
+dev = [
+    "pytest",
+    "black",
+    "ruff",
+    "mypy",
+]
+
+[tool.black]
+line-length = 88
+
+[tool.ruff]
+line-length = 88
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "."
+]
