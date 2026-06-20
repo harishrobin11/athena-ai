@@ -1,3 +1,4 @@
+
 from ..rag.retriever import Retriever
 from ..rag.prompt_builder import PromptBuilder
 from ..core.prompts import SYSTEM_PROMPT
@@ -9,7 +10,34 @@ from ..memory.database import (
     load_history,
 )
 
+def generate_response(user: str, retriever: Retriever):
+    
+    documents = retriever.retrieve(user)
 
+    prompt = PromptBuilder.build(
+        user,
+        documents,
+    )
+
+    messages = [
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT,
+        },
+        {
+            "role": "user",
+            "content": prompt,
+        },
+    ]
+
+    answer = ask_llm(messages)
+
+    sources = PromptBuilder.get_sources(documents)
+
+    return {
+        "answer": answer,
+        "sources": sources,
+    }
 def chat():
     init_db()
 
@@ -46,25 +74,12 @@ def chat():
         #         }
         #     )
 
-        documents = retriever.retrieve(user)
-
-        prompt = PromptBuilder.build(
+        result = generate_response(
             user,
-            documents,
+            retriever,
         )
 
-        messages = [
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT,
-            },
-            {
-                "role": "user",
-                "content": prompt,
-            },
-        ]
-
-        answer = ask_llm(messages)
+        answer = result["answer"]
 
         save_message(
             conversation_id,

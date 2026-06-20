@@ -1,4 +1,8 @@
+from pathlib import Path
+
+
 class PromptBuilder:
+
     @staticmethod
     def build(query, documents):
         context = "\n\n".join(
@@ -32,3 +36,28 @@ QUESTION
 ANSWER
 ======================
 """
+
+    @staticmethod
+    def get_sources(documents):
+        """
+        Extract filename and page number from retrieved documents.
+        """
+
+        sources = []
+
+        for doc in documents:
+
+            metadata = doc.metadata
+
+            filename = Path(
+                metadata.get("source", "Unknown")
+            ).name
+
+            page = metadata.get("page", 0) + 1
+
+            sources.append({
+                "filename": filename,
+                "page": page,
+            })
+
+        return sources
