@@ -31,15 +31,15 @@ def home():
 @router.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
 
-    answer = generate_response(
+    result = generate_response(
         request.message,
         retriever,
     )
 
     return ChatResponse(
-        response=answer
+        response=result["answer"],
+        sources=result["sources"],
     )
-    
 @router.post("/upload", response_model=UploadResponse)
 def upload(file: UploadFile = File(...)):
 

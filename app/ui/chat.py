@@ -1,3 +1,5 @@
+from urllib import response
+
 import requests
 import streamlit as st
 
@@ -42,8 +44,34 @@ def render_chat():
 
                 response.raise_for_status()
 
-                answer = response.json()["response"]
+                data = response.json()
 
+                answer = data["response"]
+
+                sources = data.get(
+                    "sources",
+                    [],
+                )
+
+                citation_text = ""
+
+                if sources:
+
+                    citation_text = "\n\n📚 Sources\n"
+
+                    for source in sources:
+
+                        citation_text += (
+                            f"\n• {source['filename']} "
+                            f"(Page {source['page']})"
+                        )
+
+                answer += citation_text
+
+                sources = data.get(
+                    "sources",
+                    [],
+                )
             except Exception as e:
 
                 answer = f"❌ Error:\n\n{e}"
