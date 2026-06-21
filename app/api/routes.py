@@ -34,9 +34,18 @@ def home():
 @router.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
 
+    history = [
+        (
+            msg["role"],
+            msg["content"],
+        )
+        for msg in request.history
+    ]
+
     result = generate_response(
         request.message,
         retriever,
+        history,
     )
 
     return ChatResponse(
@@ -96,13 +105,3 @@ def delete_document(filename: str):
         success=True,
         filename=filename,
     )
-@router.delete("/documents/{filename}")
-def delete_document(filename: str):
-
-    deleted = document_service.delete_document(
-        filename
-    )
-
-    return {
-        "deleted": deleted
-    }

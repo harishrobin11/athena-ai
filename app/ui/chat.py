@@ -37,7 +37,8 @@ def render_chat():
                 response = requests.post(
                     API_URL,
                     json={
-                        "message": prompt
+                        "message": prompt,
+                        "history": st.session_state.messages,
                     },
                     timeout=120,
                 )
