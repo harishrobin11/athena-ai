@@ -10,9 +10,28 @@ from ..memory.database import (
     load_history,
 )
 
-def generate_response(user: str, retriever: Retriever):
+def generate_response(
+    user: str,
+    retriever: Retriever,
+    history=None,
+):
     
-    documents = retriever.retrieve(user)
+    search_query = user
+
+    if history:
+        recent = history[-2:]
+        context_text = " ".join(
+            content
+            for _, content in recent
+        )
+
+        search_query = (
+            context_text + " " + user
+        )
+
+    documents = retriever.retrieve(
+        search_query
+    )
 
     prompt = PromptBuilder.build(
         user,
@@ -23,12 +42,26 @@ def generate_response(user: str, retriever: Retriever):
         {
             "role": "system",
             "content": SYSTEM_PROMPT,
-        },
+        }
+    ]
+
+    if history:
+
+        for role, content in history:
+
+            messages.append(
+                {
+                    "role": role,
+                    "content": content,
+                }
+            )
+
+    messages.append(
         {
             "role": "user",
             "content": prompt,
-        },
-    ]
+        }
+    )
 
     answer = ask_llm(messages)
 
@@ -57,26 +90,12 @@ def chat():
 
         save_message(conversation_id, "user", user)
 
-        # history = load_history(conversation_id)
-
-        # messages = [
-        #     {
-        #         "role": "system",
-        #         "content": SYSTEM_PROMPT,
-        #     }
-        # ]
-
-        # for role, content in history:
-        #     messages.append(
-        #         {
-        #             "role": role,
-        #             "content": content,
-        #         }
-        #     )
+        history = load_history(conversation_id)
 
         result = generate_response(
             user,
             retriever,
+            history,
         )
 
         answer = result["answer"]
