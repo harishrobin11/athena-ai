@@ -4,11 +4,14 @@ from .models import (
     ChatRequest,
     ChatResponse,
     UploadResponse,
+    DocumentInfo,
+    DocumentsResponse,
+    DeleteResponse,
 )
 from ..services.chat_service import generate_response
 from ..rag.retriever import Retriever
 
-from fastapi import UploadFile, File
+from fastapi import UploadFile, File, HTTPException
 import shutil
 from pathlib import Path
 
@@ -57,3 +60,49 @@ def upload(file: UploadFile = File(...)):
         filename=file.filename,
         chunks=chunks,
     )
+@router.get(
+    "/documents",
+    response_model=DocumentsResponse,
+)
+def list_documents():
+
+    files = document_service.list_documents()
+
+    return DocumentsResponse(
+        documents=[
+            DocumentInfo(
+                filename=file,
+            )
+            for file in files
+        ]
+    )
+@router.delete(
+    "/documents/{filename}",
+    response_model=DeleteResponse,
+)
+def delete_document(filename: str):
+
+    deleted = document_service.delete_document(
+        filename
+    )
+
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found",
+        )
+
+    return DeleteResponse(
+        success=True,
+        filename=filename,
+    )
+@router.delete("/documents/{filename}")
+def delete_document(filename: str):
+
+    deleted = document_service.delete_document(
+        filename
+    )
+
+    return {
+        "deleted": deleted
+    }

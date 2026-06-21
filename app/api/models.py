@@ -18,3 +18,14 @@ class ChatResponse(BaseModel):
 class UploadResponse(BaseModel):
     chunks: int
     filename: str
+
+class DocumentInfo(BaseModel):
+    filename: str
+
+
+class DocumentsResponse(BaseModel):
+    documents: list[DocumentInfo]
+
+class DeleteResponse(BaseModel):
+    success: bool
+    filename: str
