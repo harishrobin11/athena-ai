@@ -14,7 +14,14 @@ def generate_response(
     user: str,
     retriever: Retriever,
     history=None,
+    selected_documents=None,
 ):
+    print("======== HISTORY ========")
+
+    if history:
+        print(history)
+
+        print("=========================")
     
     search_query = user
 
@@ -28,10 +35,23 @@ def generate_response(
         search_query = (
             context_text + " " + user
         )
+    print("STEP 1 - received query")
+    filter_metadata = None
+
+    if selected_documents:
+
+        if len(selected_documents) == 1:
+
+            filter_metadata = {
+                "source":
+                f"documents/{selected_documents[0]}"
+            }
 
     documents = retriever.retrieve(
-        search_query
+        search_query,
+        filter_metadata=filter_metadata,
     )
+    print("STEP 2 - retrieval complete")
 
     prompt = PromptBuilder.build(
         user,
@@ -62,9 +82,9 @@ def generate_response(
             "content": prompt,
         }
     )
-
+    print("STEP 3 - calling LLM")
     answer = ask_llm(messages)
-
+    print("STEP 4 - LLM complete")
     sources = PromptBuilder.get_sources(documents)
 
     return {

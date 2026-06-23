@@ -14,5 +14,23 @@ class VectorStore:
     def add_documents(self, documents):
         self.db.add_documents(documents)
 
-    def similarity_search(self, query, k=3):
-        return self.db.similarity_search(query, k=k)
+    def similarity_search(
+        self,
+        query,
+        k=3,
+        filter_metadata=None,
+    ):
+        return self.db.similarity_search(
+            query=query,
+            k=k,
+            filter=filter_metadata,
+        )
+    def debug_collection(self):
+    
+        collection = self.db._collection
+
+        result = collection.get(
+            include=["metadatas"]
+        )
+
+        return result["metadatas"][:5]

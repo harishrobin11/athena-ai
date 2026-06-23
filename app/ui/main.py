@@ -1,5 +1,6 @@
 import streamlit as st
 
+from app.ui.login import render_login
 from app.ui.sidebar import render_sidebar
 from app.ui.chat import render_chat
 from app.ui.upload import render_upload
@@ -10,10 +11,19 @@ st.set_page_config(
     layout="wide",
 )
 
+if not st.session_state.get(
+    "authenticated",
+    False
+):
+    render_login()
+    st.stop()
+
 render_sidebar()
 
 st.title("🦉 Athena AI")
-st.subheader("Enterprise Knowledge Assistant")
+st.subheader(
+    "Enterprise Knowledge Assistant"
+)
 
 left, right = st.columns([1, 2])
 

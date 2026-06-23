@@ -39,10 +39,8 @@ ANSWER
 
     @staticmethod
     def get_sources(documents):
-        """
-        Extract filename and page number from retrieved documents.
-        """
 
+        seen = set()
         sources = []
 
         for doc in documents:
@@ -50,14 +48,34 @@ ANSWER
             metadata = doc.metadata
 
             filename = Path(
-                metadata.get("source", "Unknown")
+                metadata.get(
+                    "source",
+                    "Unknown"
+                )
             ).name
 
-            page = metadata.get("page", 0) + 1
+            page = (
+                metadata.get(
+                    "page",
+                    0
+                )
+                + 1
+            )
 
-            sources.append({
-                "filename": filename,
-                "page": page,
-            })
+            key = (
+                filename,
+                page,
+            )
+
+            if key not in seen:
+
+                seen.add(key)
+
+                sources.append(
+                    {
+                        "filename": filename,
+                        "page": page,
+                    }
+                )
 
         return sources

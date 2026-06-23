@@ -48,3 +48,8 @@ class DocumentService:
             return True
 
         return False
+    def document_count(self):
+        
+        return len(
+            self.list_documents()
+        )
