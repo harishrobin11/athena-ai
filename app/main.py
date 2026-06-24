@@ -1,4 +1,9 @@
-from .services.chat_service import chat
+from fastapi import FastAPI
+from app.api.routes import router
 
-if __name__ == "__main__":
-    chat()
+app = FastAPI(
+    title="Athena AI",
+    version="1.0.0"
+)
+
+app.include_router(router)

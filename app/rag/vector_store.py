@@ -25,8 +25,9 @@ class VectorStore:
             k=k,
             filter=filter_metadata,
         )
+
     def debug_collection(self):
-    
+
         collection = self.db._collection
 
         result = collection.get(
@@ -34,3 +35,22 @@ class VectorStore:
         )
 
         return result["metadatas"][:5]
+
+    def delete_document_embeddings(
+        self,
+        filename,
+        user_id,
+    ):
+        self.db._collection.delete(
+            where={
+                "$and": [
+                    {"filename": filename},
+                    {"user_id": user_id},
+                ]
+            }
+        )
+    def count_embeddings(self):
+        
+        result = self.db._collection.get()
+
+        return len(result["ids"])

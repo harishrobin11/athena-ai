@@ -13,16 +13,25 @@ class DocumentService:
             self.store = VectorStore()
         return self.store
 
-    def ingest(self, pdf_path: str):
+    def ingest(
+        self,
+        pdf_path: str,
+        user_id: int
+    ):
         # Load the PDF
         documents = load_pdf(pdf_path)
 
         # Split into chunks
         chunks = self.splitter.split(documents)
+        filename = Path(pdf_path).name
+
+        for chunk in chunks:
+            chunk.metadata["user_id"] = user_id
+            chunk.metadata["filename"] = filename
 
         # Get (or create) the vector store
         store = self._get_store()
-
+        
         # Store the chunks
         store.add_documents(chunks)
 
@@ -38,16 +47,33 @@ class DocumentService:
             file.name
             for file in documents_dir.glob("*.pdf")
         ]
-    def delete_document(self, filename: str):
-    
-        file_path = Path("documents") / filename
+        
+    def delete_document(
+        self,
+        filename: str,
+        user_id: int
+    ):
+        file_path = (
+            Path("documents")
+            / f"user_{user_id}"
+            / filename
+        )
 
         if file_path.exists():
+            
+            store = self._get_store()
+
+            store.delete_document_embeddings(
+                filename=filename,
+                user_id=user_id,
+            )
+
             file_path.unlink()
 
             return True
 
         return False
+    
     def document_count(self):
         
         return len(

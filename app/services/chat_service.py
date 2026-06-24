@@ -15,6 +15,7 @@ def generate_response(
     retriever: Retriever,
     history=None,
     selected_documents=None,
+    user_id=None,
 ):
     print("======== HISTORY ========")
 
@@ -36,15 +37,22 @@ def generate_response(
             context_text + " " + user
         )
     print("STEP 1 - received query")
-    filter_metadata = None
+    filter_metadata = {
+        "user_id": user_id
+    }
 
     if selected_documents:
-
+        
         if len(selected_documents) == 1:
 
             filter_metadata = {
-                "source":
-                f"documents/{selected_documents[0]}"
+                "$and": [
+                    {"user_id": user_id},
+                    {
+                        "source":
+                        f"documents/user_{user_id}/{selected_documents[0]}"
+                    }
+                ]
             }
 
     documents = retriever.retrieve(

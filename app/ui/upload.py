@@ -1,6 +1,11 @@
 import streamlit as st
 import requests
 
+def get_auth_headers():
+    return {
+        "Authorization":
+        f"Bearer {st.session_state['token']}"
+    }
 
 API_URL = "http://127.0.0.1:8000"
 
@@ -30,6 +35,7 @@ def render_upload():
                 response = requests.post(
                     f"{API_URL}/upload",
                     files=files,
+                    headers=get_auth_headers(),
                 )
 
             if response.status_code == 200:

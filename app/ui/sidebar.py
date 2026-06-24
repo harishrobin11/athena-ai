@@ -129,6 +129,7 @@ def render_sidebar():
 
             response = requests.get(
                 DOCUMENTS_API,
+                headers=get_auth_headers(),
                 timeout=10,
             )
 
@@ -164,7 +165,8 @@ def render_sidebar():
 
                         requests.delete(
                             f"{DOCUMENTS_API}/"
-                            f"{document['filename']}"
+                            f"{document['filename']}",
+                            headers=get_auth_headers(),
                         )
 
                         st.rerun()
@@ -210,6 +212,7 @@ def render_sidebar():
 
             response = requests.get(
                 STATS_API,
+                headers=get_auth_headers(),
                 timeout=10,
             )
 

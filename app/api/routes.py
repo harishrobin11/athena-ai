@@ -2,7 +2,6 @@ from fastapi import HTTPException
 
 from app.auth.security import verify_password
 from app.auth.jwt_handler import create_access_token
-
 from app.memory.database import get_user_by_username
 from fastapi import Depends
 from app.auth.dependencies import get_current_user
@@ -44,6 +43,10 @@ from ..memory.database import (
     delete_conversation,
     get_stats,
     get_conversation_owner,
+    create_document,
+    list_documents_by_user,
+    delete_document_by_user,
+    owns_document,    
 )
 from app.auth.security import hash_password
 
@@ -81,6 +84,7 @@ def chat(
         retriever,
         request.history,
         request.selected_documents,
+        current_user["user_id"],
     )
     print("Conversation ID =", request.conversation_id)
     if request.conversation_id:
@@ -118,17 +122,41 @@ def chat(
     )
     
 @router.post("/upload", response_model=UploadResponse)
-def upload(file: UploadFile = File(...)):
+def upload(
+    file: UploadFile = File(...),
+    current_user=Depends(get_current_user)
+):
 
-    documents_dir = Path("documents")
-    documents_dir.mkdir(exist_ok=True)
+    user_id = current_user["user_id"]
 
-    destination = documents_dir / file.filename
+    documents_dir = Path(
+        f"documents/user_{user_id}"
+    )
+
+    documents_dir.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    destination = (
+        documents_dir / file.filename
+    )
 
     with open(destination, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        shutil.copyfileobj(
+            file.file,
+            buffer
+        )
 
-    chunks = document_service.ingest(str(destination))
+    chunks = document_service.ingest(
+        str(destination),
+        user_id=user_id
+    )
+
+    create_document(
+        user_id,
+        file.filename
+    )
 
     return UploadResponse(
         filename=file.filename,
@@ -138,26 +166,36 @@ def upload(file: UploadFile = File(...)):
     "/documents",
     response_model=DocumentsResponse,
 )
-def list_documents():
+def list_documents(
+    current_user=Depends(get_current_user)
+):
 
-    files = document_service.list_documents()
+    rows = list_documents_by_user(
+        current_user["user_id"]
+    )
 
     return DocumentsResponse(
         documents=[
             DocumentInfo(
-                filename=file,
+                filename=row[0]
             )
-            for file in files
+            for row in rows
         ]
     )
 @router.delete(
     "/documents/{filename}",
     response_model=DeleteResponse,
 )
-def delete_document(filename: str):
+def delete_document(
+    filename: str,
+    current_user=Depends(get_current_user)
+):
 
-    deleted = document_service.delete_document(
-        filename
+    user_id = current_user["user_id"]
+
+    deleted = delete_document_by_user(
+        filename,
+        user_id
     )
 
     if not deleted:
@@ -165,6 +203,11 @@ def delete_document(filename: str):
             status_code=404,
             detail="Document not found",
         )
+
+    document_service.delete_document(
+        filename,
+        user_id
+    )
 
     return DeleteResponse(
         success=True,
@@ -327,7 +370,7 @@ def stats():
 
     return {
         "documents":
-            document_service.document_count(),
+            db_stats["documents"],
 
         "conversations":
             db_stats["conversations"],
