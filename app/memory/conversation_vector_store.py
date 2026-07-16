@@ -1,0 +1,55 @@
+from langchain_chroma import Chroma
+from app.rag.embedder import EmbeddingModel
+from langchain_core.documents import Document
+import uuid
+
+
+class ConversationVectorStore:
+
+    def __init__(
+        self,
+        persist_directory="data/chroma_conversations",
+    ):
+        self.embedding = EmbeddingModel().get_model()
+
+        self.db = Chroma(
+            persist_directory=persist_directory,
+            embedding_function=self.embedding,
+        )
+
+    def add_message(
+        self,
+        message,
+        user_id,
+        conversation_id,
+        role,
+        timestamp,
+    ):
+        doc = Document(
+            page_content=message,
+            metadata={
+                "user_id": str(user_id),
+                "conversation_id": str(conversation_id),
+                "role": role,
+                "timestamp": timestamp,
+            },
+        )
+
+        self.db.add_documents(
+            [doc],
+            ids=[str(uuid.uuid4())],
+        )
+
+    def search_messages(
+        self,
+        query,
+        user_id,
+        k=8,
+    ):
+        return self.db.similarity_search(
+            query,
+            k=k,
+            filter={
+                "user_id": str(user_id),
+            },
+        )

@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+streamlit
+sqlalchemy
+psycopg2-binary
+pydantic
+python-dotenv
+pypdf>=4.1.0
+pdfplumber>=0.11.0
+python-multipart>=0.0.9
+
+[dev]
+pytest
+black
+ruff
+mypy

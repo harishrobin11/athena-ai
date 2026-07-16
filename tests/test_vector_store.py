@@ -10,12 +10,13 @@ chunks = splitter.split(docs)
 
 db = VectorStore()
 
-db.add_documents(chunks)
+db.add_documents(chunks, dept_id="GENERAL")
 
 print("Documents added successfully!")
 
 results = db.similarity_search(
-    "What is Artificial Intelligence?"
+    query="What is Artificial Intelligence?",
+    dept_id="GENERAL"
 )
 
 print("\nTop Results:\n")

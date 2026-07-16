@@ -6,19 +6,30 @@ class PromptBuilder:
     @staticmethod
     def build(query, documents):
         context = "\n\n".join(
-            doc.page_content for doc in documents
+            doc["document"]
+            for doc in documents
         )
 
         return f"""
-You are Athena AI.
-
-You are answering questions using the provided documents.
+You are Athena AI, an Enterprise Knowledge Assistant.
 
 Rules:
-1. Answer only using the document context.
-2. If the answer is not in the documents, reply:
-   "I couldn't find that information in the provided documents."
-3. Do not make up information.
+
+1. If the user says hello or greets you casually without asking a specific question, respond with a warm greeting and ask how you can help them navigate their workspace or ML classifiers today.
+
+2. If the document context contains the answer:
+   - Use the document information.
+   - Prefer document facts over general knowledge.
+
+2. If the document context does NOT contain the answer:
+   - Use your general knowledge to help the user.
+   - Do not claim the information came from the documents.
+
+3. If the document context partially answers the question:
+   - Answer using the document information first.
+   - Then supplement with general knowledge when helpful.
+
+4. Never invent document content that is not present.
 
 ======================
 DOCUMENT CONTEXT
@@ -45,7 +56,7 @@ ANSWER
 
         for doc in documents:
 
-            metadata = doc.metadata
+            metadata = doc["metadata"]
 
             filename = Path(
                 metadata.get(
@@ -62,6 +73,14 @@ ANSWER
                 + 1
             )
 
+            score = round(
+                doc.get(
+                    "hybrid_score",
+                    0,
+                ),
+                3,
+            )
+
             key = (
                 filename,
                 page,
@@ -75,6 +94,7 @@ ANSWER
                     {
                         "filename": filename,
                         "page": page,
+                        "score": score,
                     }
                 )
 

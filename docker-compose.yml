@@ -1,0 +1,89 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15
+    container_name: athena_postgres
+    environment:
+      POSTGRES_USER: athena
+      POSTGRES_PASSWORD: athena_password
+      POSTGRES_DB: athena_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U athena -d athena_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio
+    container_name: athena_minio
+    environment:
+      MINIO_ROOT_USER: athena_admin
+      MINIO_ROOT_PASSWORD: athena_password
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/mc
+    container_name: athena_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 athena_admin athena_password &&
+      /usr/bin/mc mb myminio/athena-documents --ignore-existing &&
+      /usr/bin/mc mb myminio/athena-images --ignore-existing &&
+      /usr/bin/mc anonymous set public myminio/athena-documents &&
+      /usr/bin/mc anonymous set public myminio/athena-images
+      "
+
+  backend:
+    build: .
+    container_name: athena_backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://athena:athena_password@db:5432/athena_db
+      - MINIO_ENDPOINT=minio:9000
+    volumes:
+      - chroma_data:/app/data/chroma
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    container_name: athena_frontend
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+    environment:
+      - BACKEND_API_URL=http://backend:8000
+
+volumes:
+  postgres_data:
+  minio_data:
+  chroma_data:

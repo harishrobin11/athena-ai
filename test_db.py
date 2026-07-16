@@ -1,9 +1,10 @@
-from app.memory.database import (
-    init_db,
-    list_conversations,
-)
+from app.db.database import SessionLocal
+from app.db.models import User
 
-init_db()
-
-for conversation in list_conversations():
-    print(conversation)
+db = SessionLocal()
+try:
+    users = db.query(User).all()
+    for u in users:
+        print(u.id, u.username)
+finally:
+    db.close()

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Enterprise AI Platform for Intelligent Finance Operations"
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
-license = { text = "MIT" }
+license = "MIT"
 
 authors = [
     { name = "Harish Robin H" }
@@ -16,18 +16,28 @@ dependencies = [
     "streamlit",
     "sqlalchemy",
     "psycopg2-binary",
+    "boto3",
     "pydantic",
     "python-dotenv",
+    "pypdf>=4.1.0",
+    "pdfplumber>=0.11.0",
+    "python-multipart>=0.0.9",
+    "scikit-learn>=1.4.0",
+    "xgboost>=2.0.0",
+    "numpy>=1.24.0,<2.0.0",
+    "pandas>=2.1.0"
 ]
 
 [project.optional-dependencies]
-
 dev = [
     "pytest",
     "black",
     "ruff",
     "mypy",
 ]
+
+[tool.setuptools.packages.find]
+include = ["backend*", "app*", "ai*", "ml*"]
 
 [tool.black]
 line-length = 88
@@ -37,5 +47,6 @@ line-length = 88
 
 [tool.pytest.ini_options]
 pythonpath = [
-    "."
+    ".",
+    "backend"
 ]

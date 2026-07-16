@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import requests
 
@@ -7,7 +8,7 @@ def get_auth_headers():
         f"Bearer {st.session_state['token']}"
     }
 
-API_URL = "http://127.0.0.1:8000"
+API_URL = os.getenv("BACKEND_API_URL", "http://127.0.0.1:8000")
 
 
 def render_upload():
