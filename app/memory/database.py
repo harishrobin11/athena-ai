@@ -1,6 +1,8 @@
 import sqlite3
 from pathlib import Path
-
+from app.memory.conversation_vector_store import ConversationVectorStore
+from datetime import datetime
+import traceback
 DB_PATH = Path(__file__).parent.parent / "data" / "conversations.db"
 
 
@@ -96,6 +98,31 @@ def save_message(conversation_id, role, content):
     """, (conversation_id, role, content))
 
     conn.commit()
+    try:
+        print("Saving message to Chroma...")
+
+        user_id = get_conversation_user_id(conversation_id)
+
+        print(f"user_id={user_id}")
+
+        if user_id is not None:
+            store = ConversationVectorStore()
+
+            print("Store created")
+
+            store.add_message(
+                message=content,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                role=role,
+                timestamp=datetime.utcnow().isoformat(),
+            )
+
+            print("Message embedded successfully")
+
+    except Exception as e:
+        print("===== Conversation Embedding Error =====")
+        traceback.print_exc()
     conn.close()
 
 
@@ -293,6 +320,24 @@ def get_conversation_owner(
     conn.close()
 
     return row
+def get_conversation_user_id(conversation_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT user_id
+        FROM conversations
+        WHERE id = ?
+    """, (conversation_id,))
+
+    row = cursor.fetchone()
+
+    conn.close()
+
+    if row:
+        return row[0]
+
+    return None
 
 def create_document(
     user_id,

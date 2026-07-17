@@ -1,9 +1,14 @@
-from app.memory.database import (
-    init_db,
-    list_conversations,
-)
+from app.memory.database import get_connection
 
-init_db()
+conn = get_connection()
+cursor = conn.cursor()
 
-for conversation in list_conversations():
-    print(conversation)
+cursor.execute("""
+SELECT id, username
+FROM users
+""")
+
+for row in cursor.fetchall():
+    print(row)
+
+conn.close()
