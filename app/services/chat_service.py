@@ -73,14 +73,50 @@ def generate_response(
         memory_context = "\n[Semantic Memory Context]:\n" + "\n".join(semantic_memories)
         user = user + memory_context
     
-    # Route context definitions directly into your unified downstream execution agent
-    answer = run_agent(
-        user_query=user,
-        user_id=user_id,
-        selected_documents=selected_documents,
-        image_path=image_path,
-        history=history,  # <-- CRITICAL SPRINT 20 COMPLETENESS RECALL BINDING
+    # 🚀 SPRINT 17: Fully migrated to LangGraph Synchronous Graph Engine (replaces legacy run_agent)
+    from app.services.agent_framework.graph import compiled_graph
+    from app.services.agent_framework.state import AthenaAgentState
+    from langchain_core.messages import HumanMessage, AIMessage
+
+    messages = []
+    if history:
+        for h in history:
+            if h["role"] == "user":
+                messages.append(HumanMessage(content=h["content"]))
+            elif h["role"] == "assistant":
+                messages.append(AIMessage(content=h["content"]))
+    messages.append(HumanMessage(content=user))
+
+    context_meta = {"dept_id": "GENERAL"}
+    if selected_documents:
+        context_meta["selected_documents"] = selected_documents
+
+    if semantic_memories:
+        context_meta["semantic_memories"] = semantic_memories
+
+    is_simple_query = not (
+        selected_documents or 
+        any(k in user.lower() for k in ["search", "find", "document", "pdf", "file", "ingest", "read", "vault", "memory", "past", "remember", "earlier", "talk about"])
     )
+
+    state = AthenaAgentState(
+        messages=messages,
+        tenant_id="default",
+        workspace_id="default",
+        user_id=str(user_id) if user_id else "UNKNOWN",
+        next_step="final_synthesis" if is_simple_query else "supervisor",
+        execution_plan=[],
+        context_metadata=context_meta,
+        department_boundary="GENERAL"
+    )
+
+    config = {
+        "configurable": {"thread_id": conversation_id or str(uuid.uuid4())},
+        "recursion_limit": 15
+    }
+
+    result_state = compiled_graph.invoke(state, config)
+    answer = result_state["messages"][-1].content
     
     # Perform background asynchronous extraction routines for semantic profile memory storage
     try:
@@ -163,7 +199,11 @@ async def generate_response_stream(
         department_boundary="GENERAL"
     )
     
-    stream = compiled_graph.astream_events(state, {"recursion_limit": 15}, version="v2")
+    config = {
+        "configurable": {"thread_id": conversation_id or str(uuid.uuid4())},
+        "recursion_limit": 15
+    }
+    stream = compiled_graph.astream_events(state, config, version="v2")
 
     generation_id = str(uuid.uuid4())
     print("BACKEND CREATED TRACKING GENERATION ID =", generation_id)

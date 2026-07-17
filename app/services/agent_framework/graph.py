@@ -39,7 +39,10 @@ workflow.add_conditional_edges(
     {"END": END}
 )
 
-compiled_graph = workflow.compile()
+from langgraph.checkpoint.memory import MemorySaver
+
+memory_checkpointer = MemorySaver()
+compiled_graph = workflow.compile(checkpointer=memory_checkpointer)
 
 def create_athena_runtime_graph(llm) -> Any:
     """Create and compile the Athena LangGraph runtime graph with a provided LLM.
@@ -69,4 +72,6 @@ def create_athena_runtime_graph(llm) -> Any:
         lambda state: "END",
         {"END": END},
     )
-    return workflow.compile()
+    from langgraph.checkpoint.memory import MemorySaver
+    test_memory = MemorySaver()
+    return workflow.compile(checkpointer=test_memory)

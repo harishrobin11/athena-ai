@@ -6,7 +6,7 @@
 | ----------------------- | ------------ | -------- | ---------------- |
 | Foundation              | Sprint 1-8   | 8 weeks  | Mostly Completed |
 | Enterprise AI Core      | Sprint 9-16  | 8 weeks  | Mostly Completed |
-| Agentic AI Platform     | Sprint 17-24 | 8 weeks  | Planned          |
+| Agentic AI Platform     | Sprint 17-24 | 8 weeks  | In Progress      |
 | Enterprise SaaS         | Sprint 25-32 | 8 weeks  | Planned          |
 | Cloud & MLOps           | Sprint 33-40 | 8 weeks  | Planned          |
 | Enterprise Intelligence | Sprint 41-48 | 8 weeks  | Planned          |
