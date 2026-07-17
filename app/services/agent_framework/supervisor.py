@@ -176,8 +176,41 @@ async def document_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     return {"messages": [context_msg], "next_step": "supervisor"}
 
 async def sql_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
+    from app.tools.registry import execute_tool
+    from langchain_core.messages import SystemMessage, HumanMessage
+    
+    user_query = ""
+    for msg in reversed(state.get("messages", [])):
+        if msg.type == "human":
+            user_query = msg.content
+            break
+
+    db_schema = "TABLE sales(id INTEGER PRIMARY KEY, department TEXT, revenue REAL, quarter TEXT)"
+    
+    # 1. Generate SQL query
+    sql_gen_prompt = SystemMessage(
+        content=f"You are a SQL expert. Based on the user's request, write a SELECT query against the following SQLite schema: {db_schema}. Return ONLY the raw SQL string without any markdown backticks or explanations."
+    )
+    sql_gen_query = HumanMessage(content=user_query)
+    sql_query_response = await azure_llm.ainvoke([sql_gen_prompt, sql_gen_query])
+    sql_query = sql_query_response.content.strip().replace("```sql", "").replace("```", "").strip()
+
+    print("[SQL WORKER] Executing query:", sql_query)
+    sql_result = execute_tool("execute_sql", sql_query)
+    
+    # 2. Synthesize output
+    sys_prompt = SystemMessage(
+        content="You are the Athena Data Analyst Agent. Synthesize the raw relational data output into a clear, analytical summary."
+    )
+    
+    query_prompt = HumanMessage(
+        content=f"User Query: {user_query}\n\nSQL Query Run: {sql_query}\n\nRaw SQL Output:\n{sql_result}\n\nPlease provide a clear human-readable summary of these metrics."
+    )
+    
+    response = await azure_llm.ainvoke([sys_prompt, query_prompt])
+    
     context_msg = AIMessage(
-        content="[Worker Result]: SQL query generated and executed against analytics database. The task is complete. Please route to 'FINISH'."
+        content=f"[Worker Result]: Database analysis completed.\n\n{response.content}\n\nPlease route to 'FINISH'."
     )
     return {"messages": [context_msg], "next_step": "supervisor"}
 

@@ -5,6 +5,7 @@ from .search_memory import search_memory
 from .image_tool import execute as analyze_image
 from .document_ai_tool import analyze_document_layout
 from .web_search import web_search_tool
+from .sql_tool import execute_sql_query
 
 
 TOOLS = {
@@ -15,6 +16,7 @@ TOOLS = {
     "analyze_image": analyze_image,
     "analyze_document_layout": analyze_document_layout,  # Registered for Agent Orchestration
     "web_search": web_search_tool,
+    "execute_sql": execute_sql_query,
 }
 
 

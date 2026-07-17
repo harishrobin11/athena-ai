@@ -321,7 +321,7 @@ Capabilities
 
 ## Sprint 21
 
-SQL Agent
+SQL Agent (Completed)
 
 Capabilities
 * SQL Generation
