@@ -6,7 +6,7 @@ Description: Enforces strict data payload parsing schemas using Pydantic,
 """
 
 import enum
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 # =====================================================================
 # CORE ENTERPRISE SECURITY ENUMS
@@ -21,11 +21,11 @@ class DepartmentRole(str, enum.Enum):
 # SYSTEM CHAT & CORE ASSISTANT DATA SCHEMAS
 # =====================================================================
 class ChatRequest(BaseModel):
-    message: str
-    history: list = []
-    conversation_id: int | None = None
-    selected_documents: list[str] = []
-    workspace_id: int | None = None
+    message: str = Field(..., max_length=4000, description="The user's input message")
+    history: list = Field(default=[], description="Previous conversation messages")
+    conversation_id: int | None = Field(default=None, description="The ID of the conversation thread")
+    selected_documents: list[str] = Field(default=[], description="Specific documents to query")
+    workspace_id: int | None = Field(default=None, description="The target workspace ID")
 
 # =====================================================================
 # MULTI-TENANT & RBAC SCHEMAS
@@ -93,9 +93,9 @@ class MessagesResponse(BaseModel):
 # MULTI-TENANT AUTHENTICATION SCHEMAS (UPDATED FOR RBAC)
 # =====================================================================
 class RegisterRequest(BaseModel):
-    username: str
+    username: str = Field(..., min_length=3, max_length=50, pattern="^[a-zA-Z0-9_-]+$")
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=8, max_length=100, description="Password must be at least 8 characters")
     # NEW: Allows setting a team context during onboarding (defaults to PROCUREMENT)
     department: DepartmentRole = DepartmentRole.PROCUREMENT
 
@@ -103,8 +103,8 @@ class RegisterResponse(BaseModel):
     message: str
     
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(..., min_length=1, max_length=50)
+    password: str = Field(..., min_length=1, max_length=100)
 
 class LoginResponse(BaseModel):
     access_token: str
