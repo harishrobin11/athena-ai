@@ -332,7 +332,7 @@ Capabilities
 
 ## Sprint 22
 
-Code Agent
+Code Agent (Completed)
 
 Capabilities
 * Python

@@ -104,8 +104,39 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     return {"messages": [context_msg], "next_step": "supervisor"}
 
 async def code_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
+    from app.tools.registry import execute_tool
+    from langchain_core.messages import SystemMessage, HumanMessage
+    
+    user_query = ""
+    for msg in reversed(state.get("messages", [])):
+        if msg.type == "human":
+            user_query = msg.content
+            break
+
+    # 1. Generate Python code
+    py_gen_prompt = SystemMessage(
+        content="You are an expert Python programmer. Based on the user's request, write a self-contained Python script to solve the problem or calculate the answer. The script should `print()` the final result so it can be captured by standard output. Return ONLY the raw Python code without any markdown formatting or backticks."
+    )
+    py_gen_query = HumanMessage(content=user_query)
+    py_code_response = await azure_llm.ainvoke([py_gen_prompt, py_gen_query])
+    py_code = py_code_response.content.strip().replace("```python", "").replace("```", "").strip()
+
+    print("[CODE WORKER] Executing Python code:\n", py_code)
+    py_result = execute_tool("execute_python", py_code)
+    
+    # 2. Synthesize output
+    sys_prompt = SystemMessage(
+        content="You are the Athena Code Analyst. Synthesize the execution output of the Python script into a clear, natural language summary."
+    )
+    
+    query_prompt = HumanMessage(
+        content=f"User Query: {user_query}\n\nPython Code Executed:\n{py_code}\n\nStandard Output Trace:\n{py_result}\n\nPlease provide a clear human-readable summary of the answer."
+    )
+    
+    response = await azure_llm.ainvoke([sys_prompt, query_prompt])
+    
     context_msg = AIMessage(
-        content="[Worker Result]: Algorithmic processing operations and data fetches have successfully completed. The task is complete. Please route to 'FINISH'."
+        content=f"[Worker Result]: Python execution completed.\n\n{response.content}\n\nPlease route to 'FINISH'."
     )
     return {"messages": [context_msg], "next_step": "supervisor"}
 
