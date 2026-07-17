@@ -15,19 +15,22 @@ def render_upload():
     st.subheader("📄 Upload Documents")
 
     uploaded_file = st.file_uploader(
-        "Choose a PDF",
-        type=["pdf"],
+        "Choose a Document or Image",
+        type=["pdf", "png", "jpg", "jpeg"],
     )
 
     if uploaded_file is not None:
-
         if st.button("Upload"):
+            import mimetypes
+            content_type, _ = mimetypes.guess_type(uploaded_file.name)
+            if not content_type:
+                content_type = "application/octet-stream"
 
             files = {
                 "file": (
                     uploaded_file.name,
                     uploaded_file.getvalue(),
-                    "application/pdf",
+                    content_type,
                 )
             }
 

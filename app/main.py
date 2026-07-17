@@ -26,6 +26,10 @@ app = FastAPI(
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 FastAPIInstrumentor.instrument_app(app)
 
+# Prometheus Instrumentation (Sprints 26-30)
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app)
+
 # Enable CORS so your Streamlit UI can communicate cleanly across localhost ports
 app.add_middleware(
     CORSMiddleware,

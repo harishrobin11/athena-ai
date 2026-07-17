@@ -13,6 +13,10 @@ spec:
     metadata:
       labels:
         app: athena-backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
       - name: athena-backend

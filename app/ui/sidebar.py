@@ -16,232 +16,97 @@ STATS_API = "http://127.0.0.1:8000/stats"
 def render_sidebar():
 
     with st.sidebar:
-        if st.button(
-            "🚪 Logout",
-            use_container_width=True,
-        ):
+        st.markdown("### :material/psychology: Athena EAIOS")
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        with st.container(border=True):
+            st.markdown("🏢 **Active Tenant**")
+            st.selectbox("Tenant", ["Admin's Org", "Guest Org"], label_visibility="collapsed")
+            st.markdown("<span style='font-size: 0.8rem; color: #94A3B8;'>Role: <span style='color: #4ADE80;'>ADMIN</span> | Dept: <span style='color: #4ADE80;'>ADMIN</span></span>", unsafe_allow_html=True)
+            st.selectbox("Workspace", ["Default Workspace", "Finance Workspace"], label_visibility="collapsed")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        col_chat, col_vault = st.columns(2)
+        with col_chat:
+            if st.button("Operational Chat", use_container_width=True, type="secondary" if st.session_state.get("active_view") == "chat" else "primary"):
+                st.session_state["active_view"] = "chat"
+                st.rerun()
+        with col_vault:
+            if st.button("Memory Vault", use_container_width=True, type="secondary" if st.session_state.get("active_view") == "vault" else "primary"):
+                st.session_state["active_view"] = "vault"
+                st.rerun()
+
+        if st.button("Financial Automation", use_container_width=True, type="secondary" if st.session_state.get("active_view") == "finance" else "primary"):
+            st.session_state["active_view"] = "finance"
+            st.rerun()
+
+        if st.button("ML Classifier", use_container_width=True, type="secondary" if st.session_state.get("active_view") == "ml" else "primary"):
+            st.session_state["active_view"] = "ml"
+            st.rerun()
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        if st.button("↪ Logout", use_container_width=True, type="primary"):
             st.session_state.clear()
             st.rerun()
             
-        st.title("🦉 Athena AI")
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("##### Recents\n**Search History**")
 
-        st.divider()
-
-        st.subheader("💬 Conversations")
-        search_query = st.text_input(
-            "🔍 Search",
-            placeholder="Search conversations...",
-        )        
-        if st.button(
-            "➕ New Chat",
-            use_container_width=True,
-        ):
-
+        search_query = st.text_input("Search", placeholder="Search conversations...", label_visibility="collapsed")        
+        if st.button("+ New Chat", use_container_width=True, type="primary"):
             st.session_state["conversation_id"] = None
-
             st.session_state["messages"] = []
-
             st.session_state["loaded_conversation"] = None
-
             st.rerun()
 
         try:
-
             if search_query:
-                
                 response = requests.get(
                     f"{CONVERSATIONS_API}/search",
                     params={"query": search_query},
                     headers=get_auth_headers(),
                     timeout=10,
                 )
-
             else:
-
                 response = requests.get(
                     CONVERSATIONS_API,
                     headers=get_auth_headers(),
                     timeout=10,
                 )
-
             data = response.json()
 
-            for conversation in data.get(
-                "conversations",
-                [],
-            ):
-
-                col1, col2 = st.columns([5, 1])
-
+            for conversation in data.get("conversations", []):
+                is_selected = st.session_state.get("conversation_id") == conversation["id"]
+                
+                col1, col2 = st.columns([0.85, 0.15])
                 with col1:
-
                     if st.button(
                         conversation["title"],
                         key=f"conv_{conversation['id']}",
                         use_container_width=True,
+                        type="secondary" if is_selected else "tertiary"
                     ):
-
-                        st.session_state[
-                            "conversation_id"
-                        ] = conversation["id"]
-
+                        st.session_state["conversation_id"] = conversation["id"]
+                        st.session_state["active_view"] = "chat"
                         st.rerun()
-
                 with col2:
-
-                    if st.button(
-                        "🗑",
-                        key=f"delete_{conversation['id']}",
-                        use_container_width=True,
-                    ):
-
-                        requests.delete(
-                            f"{CONVERSATIONS_API}/{conversation['id']}",
-                            headers=get_auth_headers(),
-                        )
-
-                        if (
-                            st.session_state.get(
-                                "conversation_id"
-                            )
-                            == conversation["id"]
+                    if is_selected:
+                        if st.button(
+                            ":material/delete:",
+                            key=f"delete_{conversation['id']}",
+                            use_container_width=True,
+                            type="tertiary"
                         ):
-
-                            st.session_state[
-                                "conversation_id"
-                            ] = None
-
-                            st.session_state[
-                                "messages"
-                            ] = []
-
-                        st.rerun()
-
+                            requests.delete(
+                                f"{CONVERSATIONS_API}/{conversation['id']}",
+                                headers=get_auth_headers(),
+                            )
+                            if st.session_state.get("conversation_id") == conversation["id"]:
+                                st.session_state["conversation_id"] = None
+                                st.session_state["messages"] = []
+                            st.rerun()
         except Exception as e:
-
-            st.error(
-                f"Conversation Error: {e}"
-            )
-
-        st.divider()
-
-        st.subheader("📚 Documents")
-        try:
-
-            response = requests.get(
-                DOCUMENTS_API,
-                headers=get_auth_headers(),
-                timeout=10,
-            )
-
-            documents = response.json().get(
-                "documents",
-                []
-            )
-
-            if not documents:
-
-                st.caption(
-                    "No documents uploaded"
-                )
-
-            for document in documents:
-
-                col1, col2 = st.columns(
-                    [5, 1]
-                )
-
-                with col1:
-
-                    st.write(
-                        f"📄 {document['filename']}"
-                    )
-
-                with col2:
-
-                    if st.button(
-                        "🗑",
-                        key=f"doc_{document['filename']}"
-                    ):
-
-                        requests.delete(
-                            f"{DOCUMENTS_API}/"
-                            f"{document['filename']}",
-                            headers=get_auth_headers(),
-                        )
-
-                        st.rerun()
-            if documents:
-                
-                if "selected_document" not in st.session_state:
-                    st.session_state["selected_document"] = "All Documents"
-
-                document_names = ["All Documents"]
-
-                document_names.extend(
-                    [
-                        doc["filename"]
-                        for doc in documents
-                    ]
-                )
-
-                selected_document = st.radio(
-                    "🔎 Search Scope",
-                    document_names,
-                )
-
-                st.session_state[
-                    "selected_document"
-                ] = selected_document
-        except Exception as e:
-
-            st.error(
-                f"Document Error: {e}"
-            )
-                
-        if "conversation_id" in st.session_state:
-            
-            st.info(
-                f"Conversation: "
-                f"{st.session_state['conversation_id']}"
-            )
-        st.divider()
-
-        st.subheader("📊 Athena Stats")
-
-        try:
-
-            response = requests.get(
-                STATS_API,
-                headers=get_auth_headers(),
-                timeout=10,
-            )
-
-            stats = response.json()
-
-            st.metric(
-                "Documents",
-                stats["documents"],
-            )
-
-            st.metric(
-                "Conversations",
-                stats["conversations"],
-            )
-
-            st.metric(
-                "Messages",
-                stats["messages"],
-            )
-
-        except Exception as e:
-
-            st.error(
-                f"Stats Error: {e}"
-            )
-        st.subheader("System")
-
-        st.success("🟢 FastAPI Connected")
-        st.success("🟢 Ollama Running")
-        st.success("🟢 RAG Enabled")
+            st.error(f"Conversation Error: {e}")
         
