@@ -1,4 +1,5 @@
 from .vector_store import VectorStore
+from langchain_core.documents import Document
 
 
 class Retriever:
@@ -90,4 +91,13 @@ class Retriever:
             reverse=True,
         )
 
-        return reranked[:top_k]
+        final_results = []
+        for item in reranked[:top_k]:
+            final_results.append(
+                Document(
+                    page_content=item["document"],
+                    metadata=item["metadata"]
+                )
+            )
+
+        return final_results

@@ -42,8 +42,8 @@ async def supervisor_node(state: AthenaAgentState) -> Dict[str, Any]:
     }
 
 async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
-    from app.rag.vector_store import VectorStore
-    vs = VectorStore()
+    from app.rag.retriever import Retriever
+    retriever = Retriever()
     
     user_query = ""
     for msg in reversed(state.get("messages", [])):
@@ -61,14 +61,20 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     
     selected_docs = state.get("context_metadata", {}).get("selected_documents", [])
     if selected_docs:
-        # Limit search to the specific requested document context boundary
-        filter_metadata["filename"] = {"$in": selected_docs} if len(selected_docs) > 1 else selected_docs[0]
+        # Wrap multiple conditions in $and to satisfy Chroma requirements
+        filter_metadata = {
+            "$and": [
+                {"user_id": filter_user_id},
+                {"filename": {"$in": selected_docs} if len(selected_docs) > 1 else selected_docs[0]}
+            ]
+        }
 
-    docs = vs.similarity_search(
+    docs = retriever.retrieve(
         query=user_query,
         dept_id=state.get("department_boundary", "GENERAL"),
-        k=3,
-        filter_metadata=filter_metadata
+        top_k=5,
+        filter_metadata=filter_metadata,
+        use_hybrid=True
     )
     
     doc_context = "\n\n".join([d.page_content for d in docs]) if docs else "No relevant documents found in vault."
