@@ -110,8 +110,32 @@ async def code_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     return {"messages": [context_msg], "next_step": "supervisor"}
 
 async def research_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
+    from app.tools.registry import execute_tool
+    from langchain_core.messages import SystemMessage, HumanMessage
+    
+    user_query = ""
+    for msg in reversed(state.get("messages", [])):
+        if msg.type == "human":
+            user_query = msg.content
+            break
+
+    # Execute duckduckgo search
+    print("[RESEARCH WORKER] Executing web search for:", user_query)
+    search_result = execute_tool("web_search", user_query)
+    
+    sys_prompt = SystemMessage(
+        content="You are the Athena Research Agent. Your job is to summarize and verify facts based on live internet search results provided below. Be concise, objective, and cite the internet findings."
+    )
+    
+    query_prompt = HumanMessage(
+        content=f"User Query: {user_query}\n\nSearch Results:\n{search_result}\n\nPlease synthesize a final summarized research report."
+    )
+    
+    # Synthesize the findings using the LLM
+    response = await azure_llm.ainvoke([sys_prompt, query_prompt])
+    
     context_msg = AIMessage(
-        content="[Worker Result]: Research, summarization, and web verification complete. The task is complete. Please route to 'FINISH'."
+        content=f"[Worker Result]: Research completed.\n\n{response.content}\n\nPlease route to 'FINISH'."
     )
     return {"messages": [context_msg], "next_step": "supervisor"}
 

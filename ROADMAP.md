@@ -299,7 +299,7 @@ Specialized Agents
 
 ## Sprint 19
 
-Research Agent
+Research Agent (Completed)
 
 Capabilities
 * Search
