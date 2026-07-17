@@ -43,7 +43,9 @@ async def supervisor_node(state: AthenaAgentState) -> Dict[str, Any]:
 
 async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     from app.rag.retriever import Retriever
+    from app.memory.conversation_vector_store import ConversationVectorStore
     retriever = Retriever()
+    conv_store = ConversationVectorStore()
     
     user_query = ""
     for msg in reversed(state.get("messages", [])):
@@ -77,10 +79,27 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
         use_hybrid=True
     )
     
+    # Sprint 14: Conversation Intelligence - Fetch & Rank Memory
+    past_conversations = []
+    try:
+        conv_docs = conv_store.search_messages(query=user_query, user_id=str(state["user_id"]), k=10)
+        # Rank by recency (timestamp string ISO parsing not strictly necessary if ISO formatted, direct string sort works, but let's be safe)
+        conv_docs.sort(key=lambda d: d.metadata.get("timestamp", ""), reverse=True)
+        past_conversations = conv_docs[:5] # Keep the top 5 most recent matching messages
+    except Exception as e:
+        print(f"[RAG WORKER] Error retrieving past conversations: {e}")
+        
     doc_context = "\n\n".join([d.page_content for d in docs]) if docs else "No relevant documents found in vault."
     
+    conv_context = "\n\n".join([
+        f"[{d.metadata.get('timestamp', 'Unknown')}] {d.metadata.get('role', 'Unknown').capitalize()}: {d.page_content}" 
+        for d in past_conversations
+    ]) if past_conversations else "No relevant past conversations found."
+
+    combined_context = f"[Enterprise Documents]:\n{doc_context}\n\n[Past Conversations]:\n{conv_context}"
+
     context_msg = AIMessage(
-        content=f"[Worker Result]: RAG fetch complete. Retrieved context:\n\n{doc_context}\n\nPlease route to 'FINISH'."
+        content=f"[Worker Result]: RAG fetch complete. Retrieved context:\n\n{combined_context}\n\nPlease route to 'FINISH'."
     )
     return {"messages": [context_msg], "next_step": "supervisor"}
 

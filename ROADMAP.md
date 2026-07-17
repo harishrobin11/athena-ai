@@ -232,7 +232,7 @@ Features
 * Memory Ranking
 
 Status
-🟡
+✅ Completed
 
 ---
 
