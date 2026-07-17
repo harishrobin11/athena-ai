@@ -30,6 +30,7 @@ def render_sidebar():
         search_query = st.text_input(
             "🔍 Search",
             placeholder="Search conversations...",
+            key="conversation_search",
         )        
         if st.button(
             "➕ New Chat",
@@ -37,10 +38,12 @@ def render_sidebar():
         ):
 
             st.session_state["conversation_id"] = None
-
             st.session_state["messages"] = []
-
             st.session_state["loaded_conversation"] = None
+            st.session_state["conversation_search"] = ""
+            st.session_state["chat_prompt"] = ""
+            st.session_state["chat_image"] = None
+            st.session_state["chat_document"] = None
 
             st.rerun()
 
