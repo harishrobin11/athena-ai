@@ -19,7 +19,7 @@ from ..utils.image_storage import ImageStorage
 
 # Long-term Semantic Ephemeral Memory Storage Hooks
 from app.memory.extractor import extract_memories
-from app.memory.store import save_memories
+from app.memory.store import save_memories, search_memories
 
 # Core Generation Engine Architecture Interfacing Protocols
 from ..providers.ollama_provider import ask_llm, stream_llm
@@ -63,6 +63,15 @@ def generate_response(
 
     if history:
         print(f"[MEMORY LOG] Synchronous history layer captured: {len(history)} items.")
+        
+    # Retrieve Semantic Memories
+    semantic_memories = search_memories(user_id=str(user_id) if user_id else "UNKNOWN", query=user)
+    if semantic_memories:
+        print(f"[MEMORY LOG] Retrieved semantic memories: {semantic_memories}")
+        # Inject memories as system context directly into history (if supported by agent)
+        # or append it to the user query temporarily for the agent to consider.
+        memory_context = "\n[Semantic Memory Context]:\n" + "\n".join(semantic_memories)
+        user = user + memory_context
     
     # Route context definitions directly into your unified downstream execution agent
     answer = run_agent(
@@ -130,6 +139,12 @@ async def generate_response_stream(
     context_meta = {"dept_id": "GENERAL"}
     if selected_documents:
         context_meta["selected_documents"] = selected_documents
+
+    # Retrieve Semantic Memories
+    semantic_memories = search_memories(user_id=str(user_id) if user_id else "UNKNOWN", query=user)
+    if semantic_memories:
+        print(f"[MEMORY LOG] Retrieved semantic memories for stream: {semantic_memories}")
+        context_meta["semantic_memories"] = semantic_memories
 
     # Optimize latency: Route simple chat queries directly to final_synthesis, bypassing supervisor orchestration
     is_simple_query = not (

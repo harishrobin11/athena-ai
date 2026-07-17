@@ -95,52 +95,36 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
     
     # 🧠 Retrieve User Profile and Long-term cross-chat memories
     user_id = state.get("user_id")
+    
+    combined_m = state.get("context_metadata", {}).get("semantic_memories", [])
     memories_str = ""
-    if user_id and user_id != "UNKNOWN":
+    
+    if not combined_m and user_id and user_id != "UNKNOWN":
         try:
-            from app.tools.search_memory import search_memory
+            # Fallback to direct SQLite search for name declaration facts if no semantic memories found
+            from app.memory.database import list_conversations, get_messages
             try:
                 search_uid = int(user_id)
             except (ValueError, TypeError):
                 search_uid = user_id
 
-            # Grab the last user message to query semantic database
-            user_query = ""
-            for msg in reversed(state.get("messages", [])):
-                if msg.type == "human":
-                    user_query = msg.content
-                    break
-
-            m_topic = search_memory(user_query, context={"user_id": search_uid}) if user_query else ""
-            m_profile = search_memory("User profile identity, name, creator name, details", context={"user_id": search_uid})
-
-            combined_m = []
-            for mem in [m_topic, m_profile]:
-                if mem and "No relevant memories" not in mem:
-                    for line in mem.split("\n"):
-                        if line.strip() and line.strip() not in combined_m:
-                            combined_m.append(line.strip())
-
-            # Fallback to direct SQLite search for name declaration facts
-            if not combined_m:
-                from app.memory.database import list_conversations, get_messages
-                conversations = list_conversations(search_uid)
-                seen = set()
-                for conv in conversations:
-                    conv_id = conv[0]
-                    for role, content in get_messages(conv_id):
-                        if role == "user":
-                            content_lower = content.lower()
-                            if any(k in content_lower for k in ["my name is", "i am", "call me"]):
-                                clean_fact = content.strip().replace("\n", " ")
-                                if clean_fact not in seen:
-                                    combined_m.append(f"Fact from past chat: '{clean_fact}'")
-                                    seen.add(clean_fact)
-
-            if combined_m:
-                memories_str = "\n[Recall of Facts & Profile From Past Chats]:\n" + "\n".join(combined_m)
+            conversations = list_conversations(search_uid)
+            seen = set()
+            for conv in conversations:
+                conv_id = conv[0]
+                for role, content in get_messages(conv_id):
+                    if role == "user":
+                        content_lower = content.lower()
+                        if any(k in content_lower for k in ["my name is", "i am", "call me"]):
+                            clean_fact = content.strip().replace("\n", " ")
+                            if clean_fact not in seen:
+                                combined_m.append(f"Fact from past chat: '{clean_fact}'")
+                                seen.add(clean_fact)
         except Exception as e:
-            print(f"[MEMORY LOG] Error retrieving memories in final_synthesis: {e}")
+            print(f"[MEMORY LOG] Error retrieving memories fallback in final_synthesis: {e}")
+
+    if combined_m:
+        memories_str = "\n[Recall of Facts & Profile From Past Chats]:\n" + "\n".join(combined_m)
     
     sys_msg = SystemMessage(
         content=f"You are Athena AI, an Enterprise Knowledge Assistant for the {dept} department. The current date and time is {current_time}. {memories_str}\n\nIf the user says hello or greets you casually without asking a specific question, respond with a warm greeting and ask how you can help them navigate their workspace or ML classifiers today. If the user is asking about a document, report, or specific corporate data, synthesize a helpful response strictly based on the provided worker context in the conversation history, and do NOT hallucinate. If the user asks a general knowledge question (like coding, science, definitions, or today's date/time/memories), you may use your pre-trained knowledge along with the current time and recalled memories context to answer them fully and helpfully."
