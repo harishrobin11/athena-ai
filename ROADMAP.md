@@ -260,7 +260,7 @@ Features
 * Upload Dashboard
 
 Status
-❌
+✅ Completed
 
 ---
 
