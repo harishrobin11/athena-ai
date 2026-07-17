@@ -285,7 +285,7 @@ Graph Based Agent
 
 ## Sprint 18
 
-Supervisor Agent
+Supervisor Agent (Completed)
 
 ```
 User

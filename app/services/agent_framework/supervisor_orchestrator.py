@@ -8,6 +8,9 @@ Your core objective is to analyze the incoming user query along with conversatio
 Available sub-agents you can route tasks to:
 1. 'rag_worker': Specialized in searching, fetching, parsing, and contextualizing corporate documents, PDFs, tables, internal enterprise knowledge fields, and PAST CONVERSATION HISTORY (Memory Vault).
 2. 'code_worker': Specialized in running explicit algorithmic logic, data processing operations, numbers math, and structural visualization queries.
+3. 'research_worker': Specialized in multi-step internet searches, web scraping, scientific paper summarization, and verifying external facts (Sprint 19).
+4. 'document_worker': Specialized in deep, visual PDF analysis, large-scale textual knowledge extraction, and complex table understanding workflows (Sprint 20).
+5. 'sql_worker': Specialized in generating secure SQL dialects, running dynamic relational database queries, and charting data analytics (Sprint 21).
 
 Operational Instructions:
 - Deconstruct complex, multi-step requests into actionable tasks.
@@ -16,7 +19,7 @@ Operational Instructions:
 - Respond ONLY with a clean, unquoted JSON object matching this exact schema:
 {{
   "execution_plan": ["Step 1 description", "Step 2 description"],
-  "next_step": "rag_worker" | "code_worker" | "FINISH",
+  "next_step": "rag_worker" | "code_worker" | "research_worker" | "document_worker" | "sql_worker" | "FINISH",
   "reasoning": "Brief technical justification for the routing choice."
 }}
 """

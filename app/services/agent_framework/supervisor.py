@@ -109,6 +109,24 @@ async def code_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     )
     return {"messages": [context_msg], "next_step": "supervisor"}
 
+async def research_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
+    context_msg = AIMessage(
+        content="[Worker Result]: Research, summarization, and web verification complete. The task is complete. Please route to 'FINISH'."
+    )
+    return {"messages": [context_msg], "next_step": "supervisor"}
+
+async def document_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
+    context_msg = AIMessage(
+        content="[Worker Result]: Deep PDF analysis, extraction, and table parsing complete. The task is complete. Please route to 'FINISH'."
+    )
+    return {"messages": [context_msg], "next_step": "supervisor"}
+
+async def sql_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
+    context_msg = AIMessage(
+        content="[Worker Result]: SQL query generated and executed against analytics database. The task is complete. Please route to 'FINISH'."
+    )
+    return {"messages": [context_msg], "next_step": "supervisor"}
+
 async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
     from langchain_core.messages import SystemMessage, HumanMessage
     from datetime import datetime

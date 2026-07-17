@@ -5,6 +5,9 @@ from app.services.agent_framework.supervisor import (
     supervisor_node,
     rag_worker_node,
     code_worker_node,
+    research_worker_node,
+    document_worker_node,
+    sql_worker_node,
     final_synthesis_node
 )
 
@@ -14,6 +17,9 @@ workflow = StateGraph(AthenaAgentState)
 workflow.add_node("supervisor", supervisor_node)
 workflow.add_node("rag_worker", rag_worker_node)
 workflow.add_node("code_worker", code_worker_node)
+workflow.add_node("research_worker", research_worker_node)
+workflow.add_node("document_worker", document_worker_node)
+workflow.add_node("sql_worker", sql_worker_node)
 workflow.add_node("final_synthesis", final_synthesis_node)
 
 workflow.set_entry_point("supervisor")
@@ -25,6 +31,9 @@ workflow.add_conditional_edges(
     {
         "rag_worker": "rag_worker",
         "code_worker": "code_worker",
+        "research_worker": "research_worker",
+        "document_worker": "document_worker",
+        "sql_worker": "sql_worker",
         "FINISH": "final_synthesis"  # Send to synthesis to generate the text output block
     }
 )
@@ -32,6 +41,9 @@ workflow.add_conditional_edges(
 # Workers process documents/logic and automatically route back up to the master supervisor
 workflow.add_edge("rag_worker", "supervisor")
 workflow.add_edge("code_worker", "supervisor")
+workflow.add_edge("research_worker", "supervisor")
+workflow.add_edge("document_worker", "supervisor")
+workflow.add_edge("sql_worker", "supervisor")
 
 workflow.add_conditional_edges(
     "final_synthesis",
@@ -58,15 +70,21 @@ def create_athena_runtime_graph(llm) -> Any:
     workflow.add_node("supervisor", sup.supervisor_node)
     workflow.add_node("rag_worker", sup.rag_worker_node)
     workflow.add_node("code_worker", sup.code_worker_node)
+    workflow.add_node("research_worker", sup.research_worker_node)
+    workflow.add_node("document_worker", sup.document_worker_node)
+    workflow.add_node("sql_worker", sup.sql_worker_node)
     workflow.add_node("final_synthesis", sup.final_synthesis_node)
     workflow.set_entry_point("supervisor")
     workflow.add_conditional_edges(
         "supervisor",
         lambda state: state["next_step"],
-        {"rag_worker": "rag_worker", "code_worker": "code_worker", "FINISH": "final_synthesis"},
+        {"rag_worker": "rag_worker", "code_worker": "code_worker", "research_worker": "research_worker", "document_worker": "document_worker", "sql_worker": "sql_worker", "FINISH": "final_synthesis"},
     )
     workflow.add_edge("rag_worker", "supervisor")
     workflow.add_edge("code_worker", "supervisor")
+    workflow.add_edge("research_worker", "supervisor")
+    workflow.add_edge("document_worker", "supervisor")
+    workflow.add_edge("sql_worker", "supervisor")
     workflow.add_conditional_edges(
         "final_synthesis",
         lambda state: "END",
