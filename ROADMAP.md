@@ -310,7 +310,7 @@ Capabilities
 
 ## Sprint 20
 
-Document Agent
+Document Agent (Completed)
 
 Capabilities
 * PDF Analysis

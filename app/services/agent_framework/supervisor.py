@@ -140,8 +140,38 @@ async def research_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     return {"messages": [context_msg], "next_step": "supervisor"}
 
 async def document_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
+    from app.tools.registry import execute_tool
+    from langchain_core.messages import SystemMessage, HumanMessage
+    
+    user_query = ""
+    for msg in reversed(state.get("messages", [])):
+        if msg.type == "human":
+            user_query = msg.content
+            break
+
+    # Extract filename using LLM
+    extract_prompt = SystemMessage(
+        content="Extract the exact PDF filename the user wants to analyze from the query. Return ONLY the filename (e.g. invoice.pdf). If no filename is found, return 'unknown.pdf'."
+    )
+    extract_query = HumanMessage(content=user_query)
+    filename_response = await azure_llm.ainvoke([extract_prompt, extract_query])
+    filename = filename_response.content.strip()
+
+    print("[DOCUMENT WORKER] Processing document:", filename)
+    doc_result = execute_tool("analyze_document_layout", filename)
+    
+    sys_prompt = SystemMessage(
+        content="You are the Athena Document Agent. Your job is to synthesize raw extracted PDF layout and table data into a clean, human-readable report."
+    )
+    
+    query_prompt = HumanMessage(
+        content=f"User Query: {user_query}\n\nDocument Layout Data:\n{doc_result}\n\nPlease synthesize a final report based on this data."
+    )
+    
+    response = await azure_llm.ainvoke([sys_prompt, query_prompt])
+    
     context_msg = AIMessage(
-        content="[Worker Result]: Deep PDF analysis, extraction, and table parsing complete. The task is complete. Please route to 'FINISH'."
+        content=f"[Worker Result]: Document parsed.\n\n{response.content}\n\nPlease route to 'FINISH'."
     )
     return {"messages": [context_msg], "next_step": "supervisor"}
 

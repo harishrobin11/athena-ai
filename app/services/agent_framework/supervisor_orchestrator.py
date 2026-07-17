@@ -14,8 +14,11 @@ Available sub-agents you can route tasks to:
 
 Operational Instructions:
 - Deconstruct complex, multi-step requests into actionable tasks.
-- If the user asks to search, fetch, summarize, read a document, OR asks about past conversations or memories, YOU MUST output 'rag_worker' as the next_step.
-- If the required corporate data has been successfully fetched and processed by rag_worker, or if the request requires direct conversation, output 'FINISH'.
+- If the user asks about past conversations, memories, or internal unstructured vector data, output 'rag_worker'.
+- If the user asks to search the LIVE INTERNET for current facts or news, output 'research_worker'.
+- If the user asks to parse, read, extract, or layout analyze a specific PDF document (like an invoice), output 'document_worker'.
+- If the user asks for numbers math, visualization, or structural logic, output 'code_worker'.
+- If the required data has been successfully fetched and processed by a worker, or if the request requires direct casual conversation, output 'FINISH'.
 - Respond ONLY with a clean, unquoted JSON object matching this exact schema:
 {{
   "execution_plan": ["Step 1 description", "Step 2 description"],
