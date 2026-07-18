@@ -1,4 +1,4 @@
-# Athena AI 🦉
+# Athena AI
 
 [![Continuous Integration](https://github.com/username/athena-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/username/athena-ai/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)]()

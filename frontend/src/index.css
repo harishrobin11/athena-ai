@@ -4,6 +4,18 @@
 
 @layer base {
   body {
-    @apply bg-slate-900 text-slate-100 antialiased;
+    @apply bg-[#0B0F19] text-slate-100 antialiased;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-[#111827]/60 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] rounded-2xl;
+  }
+  .glass-header {
+    @apply bg-[#0B0F19]/80 backdrop-blur-lg border-b border-white/5;
+  }
+  .glow-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 drop-shadow-[0_0_15px_rgba(129,140,248,0.3)];
   }
 }

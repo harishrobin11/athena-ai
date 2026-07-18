@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
             pass
     await redis_manager.close()
 
-# 🦉 Instantiate the core FastAPI engine context exactly ONCE
+# Instantiate the core FastAPI engine context exactly ONCE
 app = FastAPI(
     title="Athena AI Core Engine",
     description="Sprint 8 Production API & Sprint 21 Architecture Unified API Gateway — Multi-Tenant Isolation",

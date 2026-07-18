@@ -49,7 +49,7 @@ async def supervisor_node(state: AthenaAgentState) -> Dict[str, Any]:
     # Fire your live structured orchestrator execution chain
     routing_decision = await orchestrator.execute(state)
     
-    # 🦉 Crucial for streaming: Send an implicit update trace block to show live reasoning
+    # Crucial for streaming: Send an implicit update trace block to show live reasoning
     thought_msg = AIMessage(
         content=""
     )

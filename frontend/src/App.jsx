@@ -9,12 +9,16 @@ function App() {
   const [activeView, setActiveView] = useState('dashboard')
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#0B0F19] text-slate-100 font-sans relative">
+      {/* Ambient background glows */}
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none" />
+
       <Sidebar activeView={activeView} setActiveView={setActiveView} />
       
-      <main className="flex-1 flex flex-col h-full bg-slate-900 border-l border-slate-800 shadow-2xl overflow-hidden relative">
-        <header className="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm shrink-0">
-          <h1 className="text-xl font-semibold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent drop-shadow-sm">
+      <main className="flex-1 flex flex-col h-full bg-transparent border-l border-white/5 overflow-hidden relative z-10">
+        <header className="h-20 flex items-center px-8 glass-header shrink-0">
+          <h1 className="text-2xl font-bold glow-text">
             {activeView === 'dashboard' && 'Analytics Dashboard'}
             {activeView === 'chat' && 'Athena Intelligence'}
             {activeView === 'workflow' && 'Workflow Builder'}
@@ -22,7 +26,7 @@ function App() {
           </h1>
         </header>
         
-        <div className="flex-1 overflow-auto p-6 scroll-smooth">
+        <div className="flex-1 overflow-auto p-8 scroll-smooth relative z-10">
           {activeView === 'dashboard' && <Dashboard />}
           {activeView === 'chat' && <ChatInterface />}
           {activeView === 'workflow' && <WorkflowBuilder />}
