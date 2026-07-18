@@ -96,6 +96,9 @@ def render_sidebar():
             if st.button("Integration Hub", use_container_width=True, type="secondary" if st.session_state.get("active_view") == "integration_hub" else "primary"):
                 st.session_state["active_view"] = "integration_hub"
                 st.rerun()
+            if st.button("Workflow Builder", use_container_width=True, type="secondary" if st.session_state.get("active_view") == "workflow_builder" else "primary"):
+                st.session_state["active_view"] = "workflow_builder"
+                st.rerun()
 
         st.markdown("<br>", unsafe_allow_html=True)
 

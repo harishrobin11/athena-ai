@@ -67,3 +67,6 @@ with col_main:
     elif active_view == "integration_hub":
         from app.ui.integrations_panel import render_integrations_panel
         render_integrations_panel()
+    elif active_view == "workflow_builder":
+        from app.ui.workflow_builder import render_workflow_builder
+        render_workflow_builder()
