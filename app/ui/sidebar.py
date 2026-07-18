@@ -77,6 +77,12 @@ def render_sidebar():
         if st.button("ML Classifier", use_container_width=True, type="secondary" if st.session_state.get("active_view") == "ml" else "primary"):
             st.session_state["active_view"] = "ml"
             st.rerun()
+            
+        is_admin = any(org.get("role") == "admin" for org in orgs_data)
+        if is_admin:
+            if st.button("Organization Settings", use_container_width=True, type="secondary" if st.session_state.get("active_view") == "org_settings" else "primary"):
+                st.session_state["active_view"] = "org_settings"
+                st.rerun()
 
         st.markdown("<br>", unsafe_allow_html=True)
 

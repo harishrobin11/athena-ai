@@ -389,7 +389,7 @@ Features
 
 ## Sprint 26
 
-Organization Management
+Organization Management (Completed)
 
 Features
 * Invite Users

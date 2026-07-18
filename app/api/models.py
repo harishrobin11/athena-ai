@@ -42,6 +42,25 @@ class OrganizationResponse(BaseModel):
     department: str
     workspaces: list[WorkspaceResponse] = []
 
+class MemberResponse(BaseModel):
+    user_id: int
+    username: str
+    email: str
+    role: str
+    department: str
+
+class MembersResponse(BaseModel):
+    members: list[MemberResponse]
+
+class InviteRequest(BaseModel):
+    email: str
+    role: str = "member"
+    department: str = "GENERAL"
+
+class UpdateMemberRequest(BaseModel):
+    role: str | None = None
+    department: str | None = None
+
 class Source(BaseModel):
     filename: str
     page: int
