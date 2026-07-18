@@ -1,0 +1,13 @@
+.venv
+__pycache__
+*.pyc
+.env
+athena.db
+conversations.db
+.git
+.github
+data/
+storage/
+logs/
+.streamlit/
+.pytest_cache/
