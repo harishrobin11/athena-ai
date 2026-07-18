@@ -43,7 +43,7 @@ def gather_global_context(user_id: Optional[int], user_query: str) -> str:
         except Exception as e:
             print(f"[CONTEXT LOG] Semantic memory tool pass skipped: {e}")
 
-        # Pass 2: High-Durability Direct SQLite Structural Scanner Fallback
+        # Pass 2: High-Durability Direct PostgreSQL Structural Scanner Fallback
         # If semantic extraction missed it, we scan actual message rows for explicit declarations
         if not combined_memories:
             try:

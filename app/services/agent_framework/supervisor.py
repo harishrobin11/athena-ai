@@ -293,7 +293,7 @@ async def sql_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     
     # 1. Generate SQL query
     sql_gen_prompt = SystemMessage(
-        content=f"You are a SQL expert. Based on the user's request, write a SELECT query against the following SQLite schema: {db_schema}. Return ONLY the raw SQL string without any markdown backticks or explanations."
+        content=f"You are a SQL expert. Based on the user's request, write a SELECT query against the following PostgreSQL schema: {db_schema}. Return ONLY the raw SQL string without any markdown backticks or explanations."
     )
     sql_gen_query = HumanMessage(content=user_query)
     sql_query_response = await azure_llm.ainvoke([sql_gen_prompt, sql_gen_query])
@@ -335,7 +335,7 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
     
     if not combined_m and user_id and user_id != "UNKNOWN":
         try:
-            # Fallback to direct SQLite search for name declaration facts if no semantic memories found
+            # Fallback to direct PostgreSQL search for name declaration facts if no semantic memories found
             from app.memory.database import list_conversations, get_messages
             try:
                 search_uid = int(user_id)

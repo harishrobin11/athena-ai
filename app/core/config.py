@@ -27,8 +27,8 @@ class EnterpriseSettings(BaseSettings):
     API_PORT: int = 8000
     BACKEND_URL: str = "http://127.0.0.1:8000"
     
-    # Persistent Path Directories
-    DATABASE_URL: str = "sqlite:///./storage/athena_enterprise.db"
+    # Persistent Database Connections
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/athena"
     DOCUMENT_STORAGE_DIR: str = "storage/documents"
     TEMP_UPLOADS_DIR: str = "storage/temp_uploads"
     

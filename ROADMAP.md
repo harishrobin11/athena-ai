@@ -510,7 +510,7 @@ Session Storage
 
 ## Sprint 37
 
-PostgreSQL Migration
+PostgreSQL Migration (Completed)
 SQLite → PostgreSQL
 
 ---

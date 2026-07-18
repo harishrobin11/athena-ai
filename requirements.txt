@@ -131,3 +131,4 @@ langchain-openai
 azure-search-documents
 redis
 fastapi-limiter==0.1.6
+psycopg2-binary
