@@ -8,18 +8,34 @@ from app.services.agent_framework.supervisor_orchestrator import AthenaSuperviso
 
 # Initialize the corporate LLM client once (adjust settings to match your core config)
 import os
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, AzureChatOpenAI
 
 _api_key = os.getenv("OPENAI_API_KEY", "ollama")
 _model = os.getenv("TARGET_LLM_MODEL", "llama3.2:3b")
 
-azure_llm = ChatOpenAI(
-    model=_model,
-    api_key=_api_key,
-    base_url="http://localhost:11434/v1",
-    temperature=0,
-    streaming=True
-)
+_azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+_azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+_azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", _model)
+_azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
+
+if _azure_api_key and _azure_endpoint:
+    azure_llm = AzureChatOpenAI(
+        azure_endpoint=_azure_endpoint,
+        api_key=_azure_api_key,
+        api_version=_azure_api_version,
+        azure_deployment=_azure_deployment,
+        temperature=0,
+        streaming=True
+    )
+else:
+    azure_llm = ChatOpenAI(
+        model=_model,
+        api_key=_api_key,
+        base_url="http://localhost:11434/v1",
+        temperature=0,
+        streaming=True
+    )
+
 orchestrator = AthenaSupervisorOrchestrator(azure_llm=azure_llm)
 
 async def supervisor_node(state: AthenaAgentState) -> Dict[str, Any]:
@@ -392,7 +408,7 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
             workspace_id=state.get("workspace_id", 1),
             user_id=uid,
             tokens=total_tokens,
-            model=azure_llm.model
+            model=getattr(azure_llm, "model", getattr(azure_llm, "model_name", "azure-openai"))
         )
         db.add(token_record)
         db.commit()

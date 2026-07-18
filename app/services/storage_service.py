@@ -146,7 +146,69 @@ class Boto3Storage(CloudStorageProvider):
             print(f"Failed to delete file from S3: {e}")
             return False
 
+class AzureBlobStorageProvider(CloudStorageProvider):
+    def __init__(self):
+        from azure.storage.blob import BlobServiceClient
+        self.connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+        self.blob_service_client = BlobServiceClient.from_connection_string(self.connection_string)
+
+    def upload_file(self, file_content: bytes, bucket: str, object_name: str, content_type: str = "application/octet-stream") -> str:
+        try:
+            container_client = self.blob_service_client.get_container_client(bucket)
+            if not container_client.exists():
+                container_client.create_container()
+                
+            blob_client = container_client.get_blob_client(object_name)
+            from azure.storage.blob import ContentSettings
+            content_settings = ContentSettings(content_type=content_type)
+            blob_client.upload_blob(file_content, overwrite=True, content_settings=content_settings)
+            return object_name
+        except Exception as e:
+            print(f"Failed to upload to Azure Blob: {e}")
+            raise Exception(f"Storage upload failed: {e}")
+
+    def get_presigned_url(self, bucket: str, object_name: str, expiration: int = 3600) -> str:
+        from azure.storage.blob import generate_blob_sas, BlobSasPermissions
+        from datetime import datetime, timedelta, timezone
+        try:
+            sas_token = generate_blob_sas(
+                account_name=self.blob_service_client.account_name,
+                container_name=bucket,
+                blob_name=object_name,
+                account_key=self.blob_service_client.credential.account_key,
+                permission=BlobSasPermissions(read=True),
+                expiry=datetime.now(timezone.utc) + timedelta(seconds=expiration)
+            )
+            return f"{self.blob_service_client.primary_endpoint}{bucket}/{object_name}?{sas_token}"
+        except Exception as e:
+            print(f"Failed to generate presigned URL for Azure: {e}")
+            return ""
+
+    def get_file_bytes(self, bucket: str, object_name: str) -> bytes:
+        try:
+            blob_client = self.blob_service_client.get_blob_client(container=bucket, blob=object_name)
+            return blob_client.download_blob().readall()
+        except Exception as e:
+            print(f"Failed to get file from Azure Blob: {e}")
+            raise FileNotFoundError(f"{object_name} not found.")
+
+    def delete_file(self, bucket: str, object_name: str) -> bool:
+        try:
+            blob_client = self.blob_service_client.get_blob_client(container=bucket, blob=object_name)
+            blob_client.delete_blob()
+            return True
+        except Exception as e:
+            print(f"Failed to delete file from Azure Blob: {e}")
+            return False
+
 def get_storage_provider():
+    if os.getenv("AZURE_STORAGE_CONNECTION_STRING"):
+        try:
+            return AzureBlobStorageProvider()
+        except Exception as e:
+            print(f"Azure Storage init failed: {e}. Falling back to LocalStorage.")
+            return LocalStorage()
+
     try:
         requests.get(os.getenv("S3_ENDPOINT_URL", "http://127.0.0.1:9000"), timeout=1)
         return Boto3Storage()

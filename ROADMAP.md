@@ -484,7 +484,7 @@ Docker Production (Completed)
 
 ## Sprint 34
 
-Azure Deployment
+Azure Deployment (Completed)
 * App Service
 * Azure OpenAI
 * Blob Storage
