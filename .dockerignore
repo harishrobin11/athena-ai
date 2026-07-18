@@ -1,13 +1,46 @@
-.venv
-__pycache__
-*.pyc
-.env
-athena.db
-conversations.db
+# Git
 .git
-.github
-data/
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+.env
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.npm/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temp / Local DB
 storage/
-logs/
-.streamlit/
-.pytest_cache/
+*.db
+*.sqlite3
+chroma_db/

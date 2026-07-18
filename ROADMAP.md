@@ -682,7 +682,7 @@ Teams
 
 ## Sprint 52
 
-API Gateway
+API Gateway (Completed)
 Microservices
 Load Balancer
 
