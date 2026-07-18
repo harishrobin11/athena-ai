@@ -644,7 +644,7 @@ Automation Engine
 
 ## Sprint 49
 
-React Frontend
+React Frontend (Completed)
 Replace Streamlit
 
 ---
