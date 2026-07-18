@@ -74,7 +74,7 @@ pillow==12.2.0
 pluggy==1.6.0
 posthog==5.4.0
 propcache==0.5.2
-protobuf==6.33.6
+protobuf
 pybase64==1.4.3
 pydantic==2.13.4
 pydantic-settings==2.14.2
