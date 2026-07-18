@@ -557,7 +557,7 @@ Forms
 
 ## Sprint 42
 
-Knowledge Graph
+Knowledge Graph (Completed)
 Neo4j
 Entity Linking
 

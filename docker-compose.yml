@@ -110,3 +110,4 @@ volumes:
   chroma_data:
   prometheus_data:
   grafana_data:
+  neo4j_data:
