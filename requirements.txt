@@ -32,7 +32,8 @@ httpx==0.28.1
 httpx-sse==0.4.3
 huggingface_hub==0.36.2
 humanfriendly==10.0
-idna==3.18
+idna==3.10
+flashrank==0.2.88
 importlib_resources==7.1.0
 Jinja2==3.1.6
 joblib==1.5.3

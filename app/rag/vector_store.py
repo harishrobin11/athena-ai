@@ -152,3 +152,66 @@ class VectorStore:
 
         matches.sort(key=lambda x: x["keyword_score"], reverse=True)
         return matches[:limit]
+
+    def hybrid_search_with_rerank(
+        self,
+        query: str,
+        dept_id: str,
+        limit: int = 5,
+        filter_metadata: Optional[Dict[str, Any]] = None,
+    ):
+        """
+        Executes a dense vector search to retrieve a larger pool of candidates,
+        then uses a Cross-Encoder Neural Re-ranker (FlashRank) to re-score and 
+        prune down to the absolute most relevant top `limit` documents.
+        """
+        # Step 1: Broad Dense Retrieval (get 20 documents)
+        initial_candidates = self.similarity_search(
+            query=query, 
+            dept_id=dept_id, 
+            k=20, 
+            filter_metadata=filter_metadata
+        )
+        
+        if not initial_candidates:
+            return []
+
+        # Step 2: Cross-Encoder Neural Re-ranking
+        try:
+            from flashrank import Ranker, RerankRequest
+            import os
+            
+            # Use the lightweight MiniLM model (ONNX)
+            ranker = Ranker(model_name="ms-marco-MiniLM-L-6-v2", cache_dir=os.path.join(self.persist_directory, "flashrank_models"))
+            
+            # Format for flashrank
+            passages = []
+            for i, doc in enumerate(initial_candidates):
+                passages.append({
+                    "id": str(i),
+                    "text": doc.page_content,
+                    "meta": doc.metadata
+                })
+                
+            rerankrequest = RerankRequest(query=query, passages=passages)
+            rerank_results = ranker.rerank(rerankrequest)
+            
+            # Map back to our standard document structure
+            final_results = []
+            for result in rerank_results[:limit]:
+                final_results.append({
+                    "document": result["text"],
+                    "metadata": result["meta"],
+                    "relevance_score": result["score"]
+                })
+            
+            return final_results
+            
+        except ImportError:
+            from app.core.logger import logger
+            logger.warning("Flashrank not installed. Falling back to base similarity search.")
+            return [{"document": d.page_content, "metadata": d.metadata, "relevance_score": 1.0} for d in initial_candidates[:limit]]
+        except Exception as e:
+            from app.core.logger import logger
+            logger.error(f"Neural Re-ranking failed: {e}. Falling back to base search.")
+            return [{"document": d.page_content, "metadata": d.metadata, "relevance_score": 1.0} for d in initial_candidates[:limit]]

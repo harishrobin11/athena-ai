@@ -565,7 +565,7 @@ Entity Linking
 
 ## Sprint 43
 
-Enterprise Search 2.0
+Enterprise Search 2.0 (Completed)
 Hybrid Search
 Re-ranking
 Cross Encoder
