@@ -64,7 +64,7 @@ onnxruntime==1.19.2
 opentelemetry-api==1.42.1
 opentelemetry-exporter-otlp-proto-common==1.42.1
 opentelemetry-exporter-otlp-proto-grpc==1.42.1
-opentelemetry-proto==1.42.1
+opentelemetry-proto>=1.42.1
 opentelemetry-sdk==1.42.1
 opentelemetry-semantic-conventions==0.63b1
 orjson==3.11.9
@@ -111,7 +111,7 @@ tokenizers==0.22.2
 torch==2.2.2
 tqdm==4.68.3
 transformers==4.57.6
-typer==0.26.7
+typer>=0.9.0,<0.10.0
 typing-inspect==0.9.0
 typing-inspection==0.4.2
 typing_extensions==4.15.0
@@ -140,5 +140,5 @@ mlflow
 setuptools
 azure-ai-documentintelligence==1.0.0b1
 neo4j==5.19.0
-spacy==3.7.4
+spacy>=3.7.4
 textblob==0.18.0.post0
