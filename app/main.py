@@ -7,10 +7,11 @@ Description: Initializes the FastAPI application state and mounts
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from app.api.routes import router as api_router
 from app.api.v1.vault import router as vault_router
 from app.api.v1.agent import router as agent_router
@@ -22,6 +23,7 @@ from app.api.organizations import router as org_router
 from app.api.workspaces import router as workspace_router
 from app.api.billing import router as billing_router
 from app.api.notifications import router as notifications_router
+from app.api.cache import router as cache_router
 from fastapi_limiter import FastAPILimiter
 from app.db.redis import redis_manager
 from contextlib import asynccontextmanager
@@ -74,14 +76,28 @@ FastAPIInstrumentor.instrument_app(app)
 from prometheus_fastapi_instrumentator import Instrumentator
 Instrumentator().instrument(app).expose(app)
 
-# Enable CORS so your Streamlit UI can communicate cleanly across localhost ports
+# GZip compression for all responses > 1KB (Sprint 54)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# Enable CORS so your React UI can communicate cleanly
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://localhost"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ─── Performance Timing Middleware (Sprint 54) ─────────────────────────────────
+@app.middleware("http")
+async def add_performance_headers(request: Request, call_next):
+    import time
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000
+    response.headers["X-Response-Time"] = f"{duration_ms:.2f}ms"
+    response.headers["X-Server"] = "Athena-AI/1.0"
+    return response
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -133,6 +149,9 @@ app.include_router(admin_router)
 
 # 6. Mount Notification System (Sprint 51)
 app.include_router(notifications_router)
+
+# 7. Mount Cache Management (Sprint 54)
+app.include_router(cache_router)
 
 if __name__ == "__main__":
     import uvicorn
