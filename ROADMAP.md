@@ -651,7 +651,7 @@ Replace Streamlit
 
 ## Sprint 50
 
-Enterprise Dashboard
+Enterprise Dashboard (Completed)
 Analytics
 Charts
 Reports

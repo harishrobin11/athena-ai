@@ -2,6 +2,7 @@ import React from 'react'
 
 export default function Sidebar({ activeView, setActiveView }) {
   const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'chat', label: 'Chat Interface', icon: '💬' },
     { id: 'workflow', label: 'Workflow Builder', icon: '⚡' },
     { id: 'integration', label: 'API Hub', icon: '🔌' },
