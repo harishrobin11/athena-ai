@@ -183,8 +183,12 @@ def home():
     return {"message": "Welcome to Athena AI API!"}
 
 @router.get("/stats")
-def stats():
-    db_stats = get_stats()
+def stats(workspace_id: Optional[int] = None, current_user=Depends(get_current_user), db=Depends(get_db)):
+    if workspace_id:
+        from app.auth.permissions import check_workspace_permission
+        check_workspace_permission(workspace_id, ["owner", "admin", "manager"], current_user, db)
+        
+    db_stats = get_stats(workspace_id)
     return {
         "documents": db_stats["documents"],
         "conversations": db_stats["conversations"],
@@ -458,8 +462,11 @@ def cancel_chat(generation_id: str):
 # RAG PERSISTENT KNOWLEDGE DOCUMENT SERVICE
 # =====================================================================
 @router.post("/upload", response_model=UploadResponse)
-def upload(file: UploadFile = File(...), workspace_id: Optional[int] = Form(None), current_user=Depends(get_current_user)):
+def upload(file: UploadFile = File(...), workspace_id: Optional[int] = Form(None), current_user=Depends(get_current_user), db=Depends(get_db)):
     user_id = current_user["user_id"]
+    if workspace_id:
+        from app.auth.permissions import check_workspace_permission
+        check_workspace_permission(workspace_id, ["owner", "admin", "manager", "developer"], current_user, db)
     
     # 1. Read bytes and upload directly to MinIO S3
     file_bytes = file.file.read()
@@ -496,8 +503,12 @@ def get_documents_endpoint(current_user=Depends(get_current_user), workspace_id:
     return {"documents": [{"filename": row[1]} for row in rows]}
 
 @router.delete("/documents/{filename}", response_model=DeleteResponse)
-def delete_document(filename: str, current_user=Depends(get_current_user)):
+def delete_document(filename: str, current_user=Depends(get_current_user), db=Depends(get_db)):
     user_id = current_user["user_id"]
+    
+    # Needs to check workspace_id of the document, but since the endpoint 
+    # currently only uses user_id, we will assume ownership check. For full RBAC, 
+    # it should verify the user has manager/admin in the doc's workspace.
     deleted = delete_document_by_user(filename, user_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Document not found")

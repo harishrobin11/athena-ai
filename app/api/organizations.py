@@ -37,11 +37,11 @@ def get_user_organizations(
     return org_responses
 
 from app.api.models import MembersResponse, MemberResponse, InviteRequest, UpdateMemberRequest
-from app.auth.permissions import OrgAdminGuard
+from app.auth.permissions import OrgRBACGuard
 from app.db.models import User
 
 # Initialize the guard
-admin_guard = OrgAdminGuard()
+admin_guard = OrgRBACGuard(["owner", "admin"])
 
 @router.get("/{org_id}/members", response_model=MembersResponse)
 def get_organization_members(

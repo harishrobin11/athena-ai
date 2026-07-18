@@ -210,12 +210,22 @@ def owns_document(filename, user_id):
     finally:
         db.close()
 
-def get_stats():
+def get_stats(workspace_id: int | None = None):
     db = next(get_db())
     try:
-        docs = db.query(Document).count()
-        convs = db.query(Conversation).count()
-        msgs = db.query(Message).count()
+        doc_q = db.query(Document)
+        conv_q = db.query(Conversation)
+        msg_q = db.query(Message).join(Conversation)
+        
+        if workspace_id:
+            doc_q = doc_q.filter(Document.workspace_id == workspace_id)
+            conv_q = conv_q.filter(Conversation.workspace_id == workspace_id)
+            msg_q = msg_q.filter(Conversation.workspace_id == workspace_id)
+            
+        docs = doc_q.count()
+        convs = conv_q.count()
+        msgs = msg_q.count()
+        
         return {
             "documents": docs,
             "conversations": convs,

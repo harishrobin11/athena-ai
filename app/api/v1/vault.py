@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
 from app.auth.dependencies import get_current_user
+from app.auth.permissions import check_workspace_permission
+from app.db.database import get_db
 from app.schemas.vault import VaultQueryRequest, VaultResponse, VaultWriteRequest, VaultDocument
 from app.rag.vector_store import VectorStore
 from langchain_core.documents import Document
@@ -15,11 +17,14 @@ store = VectorStore()  # Instantiated once at backend component boundary
 @router.post("/query", response_model=VaultResponse)
 async def query_memory(
     payload: VaultQueryRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
 ):
     workspace_id = payload.workspace_id
     if not workspace_id:
         raise HTTPException(status_code=400, detail="Missing workspace_id boundary context.")
+        
+    check_workspace_permission(int(workspace_id), ["viewer"], current_user, db)
         
     try:
         filter_meta = payload.filter_metadata or {}
@@ -51,11 +56,14 @@ async def query_memory(
 @router.post("/inject")
 async def inject_memory(
     payload: VaultWriteRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
 ):
     workspace_id = payload.workspace_id
     if not workspace_id:
         raise HTTPException(status_code=400, detail="Missing workspace_id boundary context.")
+        
+    check_workspace_permission(int(workspace_id), ["developer"], current_user, db)
         
     try:
         # Wrap raw inputs into LangChain's Document schema

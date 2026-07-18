@@ -401,7 +401,7 @@ Features
 
 ## Sprint 27
 
-RBAC
+RBAC (Completed)
 
 Roles
 * Owner

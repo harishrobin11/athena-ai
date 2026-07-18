@@ -78,7 +78,7 @@ def render_sidebar():
             st.session_state["active_view"] = "ml"
             st.rerun()
             
-        is_admin = any(org.get("role") == "admin" for org in orgs_data)
+        is_admin = any(org.get("role") in ["owner", "admin"] for org in orgs_data)
         if is_admin:
             if st.button("Organization Settings", use_container_width=True, type="secondary" if st.session_state.get("active_view") == "org_settings" else "primary"):
                 st.session_state["active_view"] = "org_settings"

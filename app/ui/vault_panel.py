@@ -71,8 +71,8 @@ def render_vault_management_panel():
 
     with tab_metrics:
         st.subheader("Workspace Resource Consumption")
-        if user_role.lower() != "admin":
-            st.warning("⛔ Access Denied: Workspace metrics require administrator privileges.")
+        if user_role.lower() not in ["owner", "admin", "manager"]:
+            st.warning("⛔ Access Denied: Workspace metrics require manager privileges.", icon="⛔")
         else:
             try:
                 # Assuming org_id = 1 for MVP if not in session state
@@ -101,14 +101,21 @@ def render_vault_management_panel():
     with tab_integrations:
         st.subheader("Enterprise Integrations & Webhooks")
         st.info("Configure external pipelines to connect workspace knowledge to other enterprise tools.")
-        st.text_input("Slack Webhook URL", placeholder="https://hooks.slack.com/services/...")
-        st.text_input("Google Drive Service Account JSON", type="password")
-        if st.button("Save Integration Configs"):
-            st.success("Configuration securely saved to Workspace secrets vault.")
+        if user_role.lower() not in ["owner", "admin"]:
+            st.warning("⛔ Access Denied: Integrations require administrator privileges.", icon="⛔")
+        else:
+            st.text_input("Slack Webhook URL", placeholder="https://hooks.slack.com/services/...")
+            st.text_input("Google Drive Service Account JSON", type="password")
+            if st.button("Save Integration Configs"):
+                st.success("Configuration securely saved to Workspace secrets vault.")
             
     with tab_marketplace:
         st.subheader("Custom Agent Marketplace")
         st.caption("Deploy sandboxed specialized agents into this workspace.")
+        
+        can_install = user_role.lower() in ["owner", "admin", "manager", "developer"]
+        if not can_install:
+            st.warning("⛔ Access Denied: Agent installation requires developer privileges.", icon="⛔")
         
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -116,7 +123,7 @@ def render_vault_management_panel():
                 st.markdown("### :material/trending_up: Financial Analyst")
                 st.write("Automatically extracts tables and runs regressions on uploaded PDFs.")
                 installed = st.session_state.get("agent_finance", False)
-                if st.button("Installed ✅" if installed else "Install Agent", key="btn_install_finance", use_container_width=True, disabled=installed):
+                if st.button("Installed ✅" if installed else "Install Agent", key="btn_install_finance", use_container_width=True, disabled=installed or not can_install):
                     st.session_state["agent_finance"] = True
                     st.toast("Financial Analyst Agent registered to workspace supervisor.", icon="✅")
                     st.rerun()
@@ -126,7 +133,7 @@ def render_vault_management_panel():
                 st.markdown("### :material/gavel: Legal Reviewer")
                 st.write("Identifies missing clauses and compares contracts against policy.")
                 installed = st.session_state.get("agent_legal", False)
-                if st.button("Installed ✅" if installed else "Install Agent", key="btn_install_legal", use_container_width=True, disabled=installed):
+                if st.button("Installed ✅" if installed else "Install Agent", key="btn_install_legal", use_container_width=True, disabled=installed or not can_install):
                     st.session_state["agent_legal"] = True
                     st.toast("Legal Reviewer Agent registered to workspace supervisor.", icon="✅")
                     st.rerun()
@@ -136,7 +143,7 @@ def render_vault_management_panel():
                 st.markdown("### :material/terminal: Python Coder")
                 st.write("Code execution sandbox environment for data cleaning and scripts.")
                 installed = st.session_state.get("agent_coder", False)
-                if st.button("Installed ✅" if installed else "Install Agent", key="btn_install_coder", use_container_width=True, disabled=installed):
+                if st.button("Installed ✅" if installed else "Install Agent", key="btn_install_coder", use_container_width=True, disabled=installed or not can_install):
                     st.session_state["agent_coder"] = True
                     st.toast("Python Coder Agent registered to workspace supervisor.", icon="✅")
                     st.rerun()
