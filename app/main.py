@@ -21,12 +21,34 @@ from app.api.organizations import router as org_router
 from app.api.workspaces import router as workspace_router
 from app.api.billing import router as billing_router
 from app.api.admin import router as admin_router
+from fastapi_limiter import FastAPILimiter
+from app.db.redis import redis_manager
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await redis_manager.connect()
+    client = redis_manager.get_client()
+    if client:
+        try:
+            await FastAPILimiter.init(client)
+            print("FastAPILimiter initialized")
+        except Exception as e:
+            print(f"Failed to initialize FastAPILimiter: {e}")
+    yield
+    if client:
+        try:
+            await FastAPILimiter.close()
+        except Exception:
+            pass
+    await redis_manager.close()
 
 # 🦉 Instantiate the core FastAPI engine context exactly ONCE
 app = FastAPI(
     title="Athena AI Core Engine",
     description="Sprint 8 Production API & Sprint 21 Architecture Unified API Gateway — Multi-Tenant Isolation",
     version="21.0.0",
+    lifespan=lifespan,
     contact={
         "name": "Athena AI Team",
         "url": "http://athena-ai.local",

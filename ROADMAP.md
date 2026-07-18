@@ -501,7 +501,7 @@ Enterprise Search
 
 ## Sprint 36
 
-Redis
+Redis (Completed)
 Caching
 Rate Limiting
 Session Storage

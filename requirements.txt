@@ -129,3 +129,5 @@ duckduckgo-search
 azure-storage-blob
 langchain-openai
 azure-search-documents
+redis
+fastapi-limiter==0.1.6
