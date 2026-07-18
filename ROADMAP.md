@@ -463,7 +463,7 @@ Features
 
 ## Sprint 32
 
-Marketplace
+Marketplace (Completed)
 
 Features
 * Agent Templates

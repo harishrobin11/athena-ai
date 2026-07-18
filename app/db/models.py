@@ -116,6 +116,33 @@ class Tag(Base):
     documents = relationship("Document", secondary=document_tags, back_populates="tags")
 
 
+class MarketplaceItem(Base):
+    __tablename__ = "marketplace_items"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    type = Column(String, nullable=False) # 'agent', 'prompt', 'workflow'
+    payload = Column(Text, nullable=True) # JSON config
+    author_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    is_public = Column(Integer, default=1) # 1 for True, 0 for False
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    author = relationship("User")
+
+
+class InstalledItem(Base):
+    __tablename__ = "installed_items"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    item_id = Column(Integer, ForeignKey("marketplace_items.id", ondelete="CASCADE"), nullable=False)
+    installed_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    workspace = relationship("Workspace")
+    item = relationship("MarketplaceItem")
+
+
 class Document(Base):
     __tablename__ = "documents"
 

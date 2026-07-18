@@ -7,6 +7,23 @@ from app.memory.conversation_vector_store import ConversationVectorStore
 def init_db():
     # Automatically create all tables
     Base.metadata.create_all(bind=engine)
+    
+    # Seed Marketplace
+    db = next(get_db())
+    try:
+        from app.db.models import MarketplaceItem
+        if db.query(MarketplaceItem).count() == 0:
+            items = [
+                MarketplaceItem(name="Financial Analyst", description="Automatically extracts tables and runs regressions on uploaded PDFs.", type="agent", payload='{"icon":":material/trending_up:"}', is_public=1),
+                MarketplaceItem(name="Legal Reviewer", description="Identifies missing clauses and compares contracts against policy.", type="agent", payload='{"icon":":material/gavel:"}', is_public=1),
+                MarketplaceItem(name="Python Coder", description="Code execution sandbox environment for data cleaning and scripts.", type="agent", payload='{"icon":":material/terminal:"}', is_public=1),
+            ]
+            db.add_all(items)
+            db.commit()
+    except Exception as e:
+        print(f"Error seeding marketplace: {e}")
+    finally:
+        db.close()
 
 def create_user(username: str, email: str, hashed_password: str, department: str = 'General'):
     db = next(get_db())

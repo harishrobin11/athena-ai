@@ -16,6 +16,7 @@ from app.api.v1.vault import router as vault_router
 from app.api.v1.agent import router as agent_router
 from app.api.admin import router as admin_router
 from app.api.knowledge import router as knowledge_router
+from app.api.marketplace import router as marketplace_router
 from app.api.organizations import router as org_router
 from app.api.workspaces import router as workspace_router
 from app.api.billing import router as billing_router
@@ -89,6 +90,7 @@ app.include_router(vault_router, prefix="/api/v1", tags=["Vault"])
 app.include_router(api_router, prefix="/api", tags=["core"])
 app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 app.include_router(knowledge_router, prefix="/api/knowledge", tags=["knowledge"])
+app.include_router(marketplace_router, prefix="/api/marketplace", tags=["marketplace"])
 
 # 3. Mount the unified root router (handles /login, /register, etc.)
 app.include_router(api_router, tags=["Auth"])

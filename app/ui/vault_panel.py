@@ -176,40 +176,81 @@ def render_vault_management_panel():
                 st.success("Configuration securely saved to Workspace secrets vault.")
             
     with tab_marketplace:
-        st.subheader("Custom Agent Marketplace")
-        st.caption("Deploy sandboxed specialized agents into this workspace.")
+        st.subheader("Global Marketplace")
+        st.caption("Discover and deploy Agents, Prompts, and Workflow Templates to this workspace.")
         
         can_install = user_role.lower() in ["owner", "admin", "manager", "developer"]
         if not can_install:
-            st.warning("⛔ Access Denied: Agent installation requires developer privileges.", icon="⛔")
+            st.warning("⛔ Access Denied: Installation requires developer privileges.", icon="⛔")
         
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            with st.container(border=True):
-                st.markdown("### :material/trending_up: Financial Analyst")
-                st.write("Automatically extracts tables and runs regressions on uploaded PDFs.")
-                installed = st.session_state.get("agent_finance", False)
-                if st.button("Installed ✅" if installed else "Install Agent", key="btn_install_finance", use_container_width=True, disabled=installed or not can_install):
-                    st.session_state["agent_finance"] = True
-                    st.toast("Financial Analyst Agent registered to workspace supervisor.", icon="✅")
-                    st.rerun()
-                    
-        with col2:
-            with st.container(border=True):
-                st.markdown("### :material/gavel: Legal Reviewer")
-                st.write("Identifies missing clauses and compares contracts against policy.")
-                installed = st.session_state.get("agent_legal", False)
-                if st.button("Installed ✅" if installed else "Install Agent", key="btn_install_legal", use_container_width=True, disabled=installed or not can_install):
-                    st.session_state["agent_legal"] = True
-                    st.toast("Legal Reviewer Agent registered to workspace supervisor.", icon="✅")
-                    st.rerun()
-                    
-        with col3:
-            with st.container(border=True):
-                st.markdown("### :material/terminal: Python Coder")
-                st.write("Code execution sandbox environment for data cleaning and scripts.")
-                installed = st.session_state.get("agent_coder", False)
-                if st.button("Installed ✅" if installed else "Install Agent", key="btn_install_coder", use_container_width=True, disabled=installed or not can_install):
-                    st.session_state["agent_coder"] = True
-                    st.toast("Python Coder Agent registered to workspace supervisor.", icon="✅")
-                    st.rerun()
+        # Add a publish section for admins
+        if user_role.lower() == "admin":
+            with st.expander("Publish New Template to Marketplace"):
+                p_name = st.text_input("Name")
+                p_desc = st.text_area("Description")
+                p_type = st.selectbox("Type", ["agent", "prompt", "workflow"])
+                p_payload = st.text_area("Payload Config (JSON)", value='{}')
+                if st.button("Publish to Marketplace", type="primary"):
+                    res = requests.post(
+                        "http://127.0.0.1:8000/api/marketplace/items", 
+                        json={"name": p_name, "description": p_desc, "type": p_type, "payload": p_payload, "is_public": 1},
+                        headers=headers
+                    )
+                    if res.status_code == 200:
+                        st.success("Successfully published to marketplace!")
+                        st.rerun()
+                    else:
+                        st.error("Failed to publish.")
+                        
+        st.divider()
+        
+        # Fetch items
+        filter_type = st.selectbox("Filter by Category", ["All", "Agent", "Prompt", "Workflow"])
+        api_url = f"http://127.0.0.1:8000/api/marketplace/items?workspace_id={workspace_id}"
+        if filter_type != "All":
+            api_url += f"&type={filter_type.lower()}"
+            
+        try:
+            res = requests.get(api_url, headers=headers)
+            if res.status_code == 200:
+                items = res.json()
+                if not items:
+                    st.info("No items found in the marketplace.")
+                else:
+                    cols = st.columns(3)
+                    for idx, item in enumerate(items):
+                        col = cols[idx % 3]
+                        with col:
+                            with st.container(border=True):
+                                # Determine icon
+                                import json
+                                icon_str = "📦"
+                                try:
+                                    if item.get("payload"):
+                                        p_data = json.loads(item["payload"])
+                                        icon_str = p_data.get("icon", "📦")
+                                except:
+                                    pass
+                                    
+                                type_badge = f"`{item['type'].upper()}`"
+                                st.markdown(f"### {icon_str} {item['name']}")
+                                st.markdown(f"{type_badge}")
+                                st.write(item.get("description", ""))
+                                
+                                installed = item.get("installed", False)
+                                btn_label = "Installed ✅" if installed else "Install"
+                                if st.button(btn_label, key=f"install_{item['id']}", use_container_width=True, disabled=installed or not can_install):
+                                    install_res = requests.post(
+                                        f"http://127.0.0.1:8000/api/marketplace/items/{item['id']}/install",
+                                        json={"workspace_id": workspace_id},
+                                        headers=headers
+                                    )
+                                    if install_res.status_code == 200:
+                                        st.toast(f"Successfully installed {item['name']}!", icon="✅")
+                                        st.rerun()
+                                    else:
+                                        st.error("Failed to install.")
+            else:
+                st.error("Failed to fetch marketplace items.")
+        except Exception as e:
+            st.error(f"Error connecting to marketplace: {e}")
