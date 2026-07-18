@@ -439,7 +439,7 @@ Features
 
 ## Sprint 30
 
-Admin Portal
+Admin Portal (Completed)
 
 Features
 * User Management

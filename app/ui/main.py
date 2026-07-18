@@ -58,3 +58,6 @@ with col_main:
     elif active_view == "org_settings":
         from app.ui.org_settings import render_org_settings_panel
         render_org_settings_panel()
+    elif active_view == "admin_portal":
+        from app.ui.admin_portal import render_admin_portal
+        render_admin_portal()

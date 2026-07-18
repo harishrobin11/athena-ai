@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from app.auth.security import hash_password, verify_password
 from app.auth.jwt_handler import create_access_token
 from app.auth.dependencies import get_current_user, DepartmentGuard
+from app.db.database import get_db
 from app.api.models import (
     LoginRequest,
     LoginResponse,

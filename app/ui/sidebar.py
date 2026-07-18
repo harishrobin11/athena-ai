@@ -84,6 +84,13 @@ def render_sidebar():
                 st.session_state["active_view"] = "org_settings"
                 st.rerun()
 
+        # Check for SuperAdmin (Admin Portal)
+        profile = st.session_state.get("user_profile", {})
+        if profile.get("department") == "ADMIN" or profile.get("username") == "admin":
+            if st.button("Admin Portal", use_container_width=True, type="secondary" if st.session_state.get("active_view") == "admin_portal" else "primary"):
+                st.session_state["active_view"] = "admin_portal"
+                st.rerun()
+
         st.markdown("<br>", unsafe_allow_html=True)
 
         if st.button("↪ Logout", use_container_width=True, type="primary"):
