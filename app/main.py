@@ -24,6 +24,7 @@ from app.api.admin import router as admin_router
 from fastapi_limiter import FastAPILimiter
 from app.db.redis import redis_manager
 from contextlib import asynccontextmanager
+from app.core.logger import logger
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,9 +33,9 @@ async def lifespan(app: FastAPI):
     if client:
         try:
             await FastAPILimiter.init(client)
-            print("FastAPILimiter initialized")
+            logger.info("FastAPILimiter initialized")
         except Exception as e:
-            print(f"Failed to initialize FastAPILimiter: {e}")
+            logger.error(f"Failed to initialize FastAPILimiter: {e}")
     yield
     if client:
         try:
@@ -94,6 +95,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled API exception", exc_info=exc)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"error": {"code": "INTERNAL_ERROR", "message": "An unexpected error occurred."}},

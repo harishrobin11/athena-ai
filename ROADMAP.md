@@ -526,7 +526,7 @@ Deployment
 
 ## Sprint 39
 
-Monitoring
+Monitoring (Completed)
 Grafana
 Prometheus
 Logging
