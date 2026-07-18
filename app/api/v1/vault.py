@@ -7,6 +7,7 @@ from app.db.database import get_db
 from app.schemas.vault import VaultQueryRequest, VaultResponse, VaultWriteRequest, VaultDocument
 from app.rag.vector_store import VectorStore
 from langchain_core.documents import Document
+from app.tasks.worker import process_document_task
 
 router = APIRouter(prefix="/vault", tags=["AI Memory Vault"])
 store = VectorStore()  # Instantiated once at backend component boundary
@@ -88,3 +89,26 @@ async def inject_memory(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Data injection failed: {str(e)}")
+
+# =====================================================================
+# ASYNC BACKGROUND PROCESSING ENDPOINT (SPRINT 53)
+# =====================================================================
+class AsyncProcessRequest(BaseModel):
+    document_id: int
+
+@router.post("/process-async")
+async def process_document_async(
+    payload: AsyncProcessRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        # Dispatch the task to Celery asynchronously
+        task = process_document_task.delay(payload.document_id, current_user.get("user_id", 1))
+        
+        return {
+            "success": True,
+            "message": "Document processing started in background.",
+            "task_id": task.id
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to dispatch background task: {str(e)}")

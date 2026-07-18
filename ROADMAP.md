@@ -690,7 +690,7 @@ Load Balancer
 
 ## Sprint 53
 
-Distributed Workers
+Distributed Workers (Completed)
 Celery
 RabbitMQ
 Background Jobs
