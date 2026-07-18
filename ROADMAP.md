@@ -451,7 +451,7 @@ Features
 
 ## Sprint 31
 
-Knowledge Management
+Knowledge Management (Completed)
 
 Features
 * Collections

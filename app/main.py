@@ -14,6 +14,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router as api_router
 from app.api.v1.vault import router as vault_router
 from app.api.v1.agent import router as agent_router
+from app.api.admin import router as admin_router
+from app.api.knowledge import router as knowledge_router
 from app.api.organizations import router as org_router
 from app.api.workspaces import router as workspace_router
 from app.api.billing import router as billing_router
@@ -78,12 +80,15 @@ async def global_exception_handler(request: Request, exc: Exception):
 async def root_health_check():
     return {"status": "online", "system": "Athena-AI Core Gateway"}
 
-# 🔄 ROUTER REGISTRATIONS DIRECTLY TO APP CONTEXT
 # 1. Mount the Conversational Agent Stream Gateway (/api/v1/agent/chat)
 app.include_router(agent_router, prefix="/api/v1", tags=["Agent"])
 
 # 2. Mount the Module 10 Memory Vault Database Router (/api/v1/vault)
 app.include_router(vault_router, prefix="/api/v1", tags=["Vault"])
+
+app.include_router(api_router, prefix="/api", tags=["core"])
+app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
+app.include_router(knowledge_router, prefix="/api/knowledge", tags=["knowledge"])
 
 # 3. Mount the unified root router (handles /login, /register, etc.)
 app.include_router(api_router, tags=["Auth"])

@@ -29,8 +29,9 @@ def render_vault_management_panel():
         st.warning("Please select a workspace from the sidebar first.", icon=":material/warning:")
         return
 
-    tab_query, tab_metrics, tab_integrations, tab_marketplace = st.tabs([
+    tab_query, tab_knowledge, tab_metrics, tab_integrations, tab_marketplace = st.tabs([
         ":material/search: Semantic Search", 
+        ":material/folder: Knowledge Management",
         ":material/analytics: Token Usage Analytics", 
         ":material/webhook: Enterprise Webhooks", 
         ":material/store: Agent Marketplace"
@@ -68,6 +69,71 @@ def render_vault_management_panel():
                         st.error(f"Backend rejection ({response.status_code}): {response.json().get('detail')}")
                 except Exception as e:
                     st.error(f"Failed to establish connection: {str(e)}")
+
+    with tab_knowledge:
+        st.subheader("Knowledge Management")
+        st.caption("Organize your workspace documents using Collections and Tags.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("### Create Collection")
+            new_col_name = st.text_input("Collection Name", key="new_col_name")
+            if st.button("Create Collection", type="primary"):
+                if new_col_name:
+                    res = requests.post(f"http://127.0.0.1:8000/api/knowledge/collections", json={"name": new_col_name, "workspace_id": workspace_id}, headers=headers)
+                    if res.status_code == 200:
+                        st.success(f"Collection '{new_col_name}' created!")
+                        st.rerun()
+                    else:
+                        st.error("Failed to create collection.")
+                        
+        with col2:
+            st.markdown("### Create Tag")
+            new_tag_name = st.text_input("Tag Name", key="new_tag_name")
+            new_tag_color = st.color_picker("Tag Color", "#3b82f6")
+            if st.button("Create Tag", type="primary"):
+                if new_tag_name:
+                    res = requests.post(f"http://127.0.0.1:8000/api/knowledge/tags", json={"name": new_tag_name, "color": new_tag_color, "workspace_id": workspace_id}, headers=headers)
+                    if res.status_code == 200:
+                        st.success(f"Tag '{new_tag_name}' created!")
+                        st.rerun()
+                    else:
+                        st.error("Failed to create tag.")
+                        
+        st.divider()
+        st.markdown("### Upload Document to Vault")
+        
+        # Fetch collections and tags
+        col_res = requests.get(f"http://127.0.0.1:8000/api/knowledge/collections/{workspace_id}", headers=headers)
+        tag_res = requests.get(f"http://127.0.0.1:8000/api/knowledge/tags/{workspace_id}", headers=headers)
+        
+        collections = col_res.json() if col_res.status_code == 200 else []
+        tags = tag_res.json() if tag_res.status_code == 200 else []
+        
+        col_options = {c["name"]: c["id"] for c in collections}
+        tag_options = {t["name"]: t["id"] for t in tags}
+        
+        selected_col = st.selectbox("Assign to Collection (Optional)", ["None"] + list(col_options.keys()))
+        selected_tags = st.multiselect("Assign Tags (Optional)", list(tag_options.keys()))
+        dept = st.text_input("Department Boundary (Optional)", value=user_dept)
+        
+        uploaded_file = st.file_uploader("Upload PDF Document", type=["pdf"], key="vault_upload")
+        if st.button("Upload Document", type="primary") and uploaded_file:
+            with st.spinner("Uploading and processing document..."):
+                files = {"file": (uploaded_file.name, uploaded_file.getvalue(), "application/pdf")}
+                data = {"workspace_id": workspace_id}
+                if selected_col != "None":
+                    data["collection_id"] = col_options[selected_col]
+                if selected_tags:
+                    data["tags"] = ",".join([str(tag_options[t]) for t in selected_tags])
+                if dept:
+                    data["department"] = dept
+                    
+                up_res = requests.post(f"http://127.0.0.1:8000/api/upload", files=files, data=data, headers=headers)
+                if up_res.status_code == 200:
+                    st.success("Document uploaded successfully! (Versioning applied automatically if it already exists)")
+                else:
+                    st.error(f"Upload failed: {up_res.text}")
 
     with tab_metrics:
         st.subheader("Workspace Resource Consumption")

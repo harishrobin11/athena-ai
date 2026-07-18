@@ -463,11 +463,19 @@ def cancel_chat(generation_id: str):
 # RAG PERSISTENT KNOWLEDGE DOCUMENT SERVICE
 # =====================================================================
 @router.post("/upload", response_model=UploadResponse)
-def upload(file: UploadFile = File(...), workspace_id: Optional[int] = Form(None), current_user=Depends(get_current_user), db=Depends(get_db)):
+def upload(
+    file: UploadFile = File(...), 
+    workspace_id: Optional[int] = Form(None), 
+    collection_id: Optional[int] = Form(None),
+    department: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None), # Comma separated tag IDs
+    current_user=Depends(get_current_user), 
+    db=Depends(get_db)
+):
     user_id = current_user["user_id"]
     if workspace_id:
         from app.auth.permissions import check_workspace_permission
-        from app.db.models import Workspace, Organization, Document
+        from app.db.models import Workspace, Organization, Document, Tag
         from app.core.billing_config import TIER_LIMITS, check_limit
         
         check_workspace_permission(workspace_id, ["owner", "admin", "manager", "developer"], current_user, db)
@@ -506,8 +514,38 @@ def upload(file: UploadFile = File(...), workspace_id: Optional[int] = Form(None
     finally:
         os.unlink(tmp_path) # Clean up temp file
 
-    # 3. Save standard DB tracking metrics
-    add_document(user_id, file.filename, object_key=object_key, workspace_id=workspace_id)
+    # 3. Save standard DB tracking metrics (with versioning)
+    version = 1
+    if workspace_id:
+        existing = db.query(Document).filter(
+            Document.workspace_id == workspace_id, 
+            Document.filename == file.filename
+        ).order_by(Document.version.desc()).first()
+        if existing:
+            version = existing.version + 1
+            # Optionally remove older versions from ChromaDB here
+            # document_service.delete_document(file.filename, user_id)
+            # Actually, keeping it simple: just bump version in DB.
+
+    doc_id = add_document(
+        user_id, 
+        file.filename, 
+        object_key=object_key, 
+        workspace_id=workspace_id,
+        collection_id=collection_id,
+        department=department,
+        version=version
+    )
+
+    if tags and workspace_id:
+        tag_ids = [int(t.strip()) for t in tags.split(",") if t.strip().isdigit()]
+        if tag_ids:
+            doc = db.query(Document).filter(Document.id == doc_id).first()
+            if doc:
+                found_tags = db.query(Tag).filter(Tag.id.in_(tag_ids), Tag.workspace_id == workspace_id).all()
+                doc.tags.extend(found_tags)
+                db.commit()
+
     return UploadResponse(filename=file.filename, chunks=chunks)
 
 @router.get("/documents", response_model=DocumentsResponse)

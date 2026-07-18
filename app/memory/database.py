@@ -161,7 +161,7 @@ def load_history(conversation_id, limit=20):
     finally:
         db.close()
 
-def add_document(user_id, filename, object_key, bucket="athena-documents", workspace_id=None):
+def add_document(user_id, filename, object_key, bucket="athena-documents", workspace_id=None, collection_id=None, department=None, version=1):
     db = next(get_db())
     try:
         doc = Document(
@@ -169,7 +169,10 @@ def add_document(user_id, filename, object_key, bucket="athena-documents", works
             filename=filename, 
             object_key=object_key, 
             bucket=bucket, 
-            workspace_id=workspace_id
+            workspace_id=workspace_id,
+            collection_id=collection_id,
+            department=department,
+            version=version
         )
         db.add(doc)
         db.commit()
