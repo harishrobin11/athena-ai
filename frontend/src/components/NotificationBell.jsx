@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 const API_BASE = '/api/notifications'
 
@@ -22,8 +23,9 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [unread, setUnread] = useState(0)
-  const [loading, setLoading] = useState(false)
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 })
   const ref = useRef(null)
+  const bellRef = useRef(null)
 
   const fetchNotifications = async () => {
     try {
@@ -40,7 +42,7 @@ export default function NotificationBell() {
 
   useEffect(() => {
     fetchNotifications()
-    const interval = setInterval(fetchNotifications, 15000) // poll every 15s
+    const interval = setInterval(fetchNotifications, 15000)
     return () => clearInterval(interval)
   }, [])
 
@@ -54,6 +56,13 @@ export default function NotificationBell() {
   }, [])
 
   const handleOpen = () => {
+    if (!open && bellRef.current) {
+      const rect = bellRef.current.getBoundingClientRect()
+      setDropdownPos({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      })
+    }
     setOpen(o => !o)
     if (!open) fetchNotifications()
   }
@@ -86,6 +95,7 @@ export default function NotificationBell() {
     <div className="relative" ref={ref}>
       {/* Bell Button */}
       <button
+        ref={bellRef}
         onClick={handleOpen}
         id="notification-bell-btn"
         className="relative p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10
@@ -106,12 +116,16 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* Dropdown Panel */}
-      {open && (
-        <div className="absolute right-0 top-12 w-[380px] max-h-[520px] flex flex-col
-                        bg-[#111827]/95 backdrop-blur-xl border border-white/10 rounded-2xl
-                        shadow-2xl shadow-black/50 z-50 overflow-hidden
-                        animate-in slide-in-from-top-2 duration-200">
+
+      {/* Dropdown Panel — rendered via portal to escape overflow-hidden parents */}
+      {open && createPortal(
+        <div
+          ref={ref}
+          style={{ top: dropdownPos.top, right: dropdownPos.right }}
+          className="fixed w-[380px] max-h-[520px] flex flex-col
+                      bg-[#111827]/95 backdrop-blur-xl border border-white/10 rounded-2xl
+                      shadow-2xl shadow-black/50 z-[9999] overflow-hidden"
+        >
           
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
@@ -209,7 +223,7 @@ export default function NotificationBell() {
             </div>
           )}
         </div>
-      )}
+      , document.body)}
     </div>
   )
 }
