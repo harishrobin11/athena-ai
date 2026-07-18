@@ -11,6 +11,8 @@ from .api_tool import execute_api_call
 from .schedule_tool import schedule_task
 
 
+from .api_hub_tools import slack_tool, jira_tool, salesforce_tool
+
 TOOLS = {
     "calculator": calculator_tool,
     "search_documents": search_documents_tool,
@@ -23,6 +25,9 @@ TOOLS = {
     "execute_python": execute_python_code,
     "execute_api": execute_api_call,
     "schedule_task": schedule_task,
+    "slack_tool": slack_tool,
+    "jira_tool": jira_tool,
+    "salesforce_tool": salesforce_tool,
 }
 
 

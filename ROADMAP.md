@@ -297,6 +297,24 @@ Specialized Agents
 
 ---
 
+## Sprint 47
+
+Enterprise API Hub (Completed)
+Slack
+Teams
+Outlook
+Jira
+Salesforce
+SAPrch
+* Summarize
+* Verify
+
+---
+
+## Sprint 48
+
+---
+
 ## Sprint 19
 
 Research Agent (Completed)

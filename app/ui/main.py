@@ -64,3 +64,6 @@ with col_main:
     elif active_view == "prompt_studio":
         from app.ui.prompt_studio import render_prompt_studio
         render_prompt_studio()
+    elif active_view == "integration_hub":
+        from app.ui.integrations_panel import render_integrations_panel
+        render_integrations_panel()
