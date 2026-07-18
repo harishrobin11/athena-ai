@@ -1,9 +1,9 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
 } from 'recharts'
-import { Activity, Users, Database, Zap } from 'lucide-react'
+import { Activity, Users, Database, Zap, Wifi, WifiOff } from 'lucide-react'
 
 // Mock Data
 const tokenData = [
@@ -19,28 +19,73 @@ const workflowData = [
   { name: 'Failed', value: 15 },
 ]
 
-const latencyData = [
-  { time: '10:00', ms: 120 },
-  { time: '10:05', ms: 132 },
-  { time: '10:10', ms: 101 },
-  { time: '10:15', ms: 140 },
-  { time: '10:20', ms: 90 },
-  { time: '10:25', ms: 110 },
-]
-
 const COLORS = ['#10b981', '#f43f5e']
 
 export default function Dashboard() {
+  const [latencyData, setLatencyData] = useState([])
+  const [kpis, setKpis] = useState({
+    activeAgents: 24,
+    memoryGb: 4.2,
+    latencyMs: 112,
+    totalExecutions: 12403
+  })
+  const [isConnected, setIsConnected] = useState(false)
+
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8000/api/v1/metrics/live')
+    
+    ws.onopen = () => {
+      setIsConnected(true)
+    }
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      setKpis({
+        activeAgents: data.activeAgents,
+        memoryGb: data.memoryGb,
+        latencyMs: data.latencyMs,
+        totalExecutions: data.totalExecutions
+      })
+
+      // Update time series
+      const now = new Date()
+      const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+      
+      setLatencyData(prev => {
+        const newData = [...prev, { time: timeString, ms: data.latencyMs }]
+        if (newData.length > 20) newData.shift() // Keep last 20 points
+        return newData
+      })
+    }
+
+    ws.onclose = () => {
+      setIsConnected(false)
+    }
+
+    return () => {
+      ws.close()
+    }
+  }, [])
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       
+      {/* Header with Connection Status */}
+      <div className="flex justify-between items-center bg-slate-800 rounded-xl border border-slate-700 p-4 shadow-lg">
+        <h2 className="text-lg font-bold text-slate-100">Live System Metrics</h2>
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${isConnected ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30' : 'bg-rose-900/30 text-rose-400 border-rose-500/30'}`}>
+          {isConnected ? <Wifi size={14} /> : <WifiOff size={14} />}
+          {isConnected ? 'Live Connection' : 'Disconnected'}
+        </div>
+      </div>
+
       {/* Top Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Active Agents', value: '24', icon: Users, color: 'text-blue-400' },
-          { label: 'System Memory', value: '4.2 GB', icon: Database, color: 'text-emerald-400' },
-          { label: 'Avg Latency', value: '112 ms', icon: Activity, color: 'text-amber-400' },
-          { label: 'Total Executions', value: '12,403', icon: Zap, color: 'text-violet-400' },
+          { label: 'Active Agents', value: kpis.activeAgents, icon: Users, color: 'text-blue-400' },
+          { label: 'System Memory', value: `${kpis.memoryGb} GB`, icon: Database, color: 'text-emerald-400' },
+          { label: 'Avg Latency', value: `${kpis.latencyMs} ms`, icon: Activity, color: 'text-amber-400' },
+          { label: 'Total Executions', value: kpis.totalExecutions.toLocaleString(), icon: Zap, color: 'text-violet-400' },
         ].map((stat, i) => (
           <div key={i} className="bg-slate-800 rounded-xl border border-slate-700 p-6 flex items-center gap-4 shadow-lg">
             <div className={`p-3 bg-slate-900 rounded-lg border border-slate-700 ${stat.color}`}>

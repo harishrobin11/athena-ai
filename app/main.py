@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router as api_router
 from app.api.v1.vault import router as vault_router
 from app.api.v1.agent import router as agent_router
+from app.api.v1.metrics import router as metrics_router
 from app.api.admin import router as admin_router
 from app.api.knowledge import router as knowledge_router
 from app.api.marketplace import router as marketplace_router
@@ -109,6 +110,9 @@ app.include_router(agent_router, prefix="/api/v1", tags=["Agent"])
 
 # 2. Mount the Module 10 Memory Vault Database Router (/api/v1/vault)
 app.include_router(vault_router, prefix="/api/v1", tags=["Vault"])
+
+# Mount Live Metrics Router
+app.include_router(metrics_router, prefix="/api/v1", tags=["Metrics"])
 
 app.include_router(api_router, prefix="/api", tags=["core"])
 app.include_router(admin_router, prefix="/api/admin", tags=["admin"])

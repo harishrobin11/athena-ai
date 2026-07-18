@@ -268,6 +268,18 @@ Status
 
 ---
 
+## Sprint 51
+
+Real-time Analytics (Completed)
+WebSocket Integration
+Live Metricsn
+* Nodes
+* Edges
+* State
+* Checkpoints
+
+---
+
 ## Sprint 17
 
 LangGraph Integration
