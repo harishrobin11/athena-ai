@@ -16,6 +16,7 @@ from app.api.v1.vault import router as vault_router
 from app.api.v1.agent import router as agent_router
 from app.api.organizations import router as org_router
 from app.api.workspaces import router as workspace_router
+from app.api.billing import router as billing_router
 
 # 🦉 Instantiate the core FastAPI engine context exactly ONCE
 app = FastAPI(
@@ -89,6 +90,7 @@ app.include_router(api_router, tags=["Auth"])
 # 4. Mount the Multi-Tenant routers
 app.include_router(org_router, tags=["Tenants"])
 app.include_router(workspace_router, tags=["Tenants"])
+app.include_router(billing_router)
 
 if __name__ == "__main__":
     import uvicorn

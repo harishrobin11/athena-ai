@@ -414,7 +414,7 @@ Roles
 
 ## Sprint 28
 
-Subscription System
+Subscription System (Completed)
 
 Plans
 * Free

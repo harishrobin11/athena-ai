@@ -24,8 +24,8 @@ def render_org_settings_panel():
                 st.warning("You are not part of any organization.")
                 return
             
-            # Filter to organizations where the user is an admin
-            admin_orgs = [o for o in orgs if o.get("role") == "admin"]
+            # Filter to organizations where the user is an owner or admin
+            admin_orgs = [o for o in orgs if o.get("role") in ["owner", "admin"]]
             
             if not admin_orgs:
                 st.warning("You must be an Organization Admin to view this page.", icon=":material/security:")
@@ -36,7 +36,7 @@ def render_org_settings_panel():
             selected_org_id = org_options[selected_org_name]
             
             # Tabs for management
-            tab_members, tab_invite = st.tabs([":material/group: Members", ":material/person_add: Invite User"])
+            tab_members, tab_invite, tab_billing = st.tabs([":material/group: Members", ":material/person_add: Invite User", ":material/credit_card: Billing"])
             
             with tab_members:
                 st.subheader(f"Members of {selected_org_name}")
@@ -94,6 +94,51 @@ def render_org_settings_panel():
                         st.success(f"Successfully added {invite_email} to {selected_org_name}!")
                     else:
                         st.error(f"Failed to invite: {i_res.text}")
+                        
+            with tab_billing:
+                st.subheader("Billing & Subscriptions")
+                st.caption("Manage your organization's subscription plan and payment methods.")
+                
+                sub_url = f"http://127.0.0.1:8000/billing/{selected_org_id}/subscription"
+                s_res = requests.get(sub_url, headers=headers)
+                
+                if s_res.status_code == 200:
+                    sub_data = s_res.json().get("data", {})
+                    current_plan = sub_data.get("billing_plan", "free").upper()
+                    st.info(f"**Current Plan**: {current_plan} | **Status**: {sub_data.get('status', 'active').capitalize()}")
+                    
+                    plans_url = "http://127.0.0.1:8000/billing/plans"
+                    p_res = requests.get(plans_url, headers=headers)
+                    if p_res.status_code == 200:
+                        plans = p_res.json().get("data", [])
+                        st.markdown("### Available Plans")
+                        cols = st.columns(len(plans))
+                        for i, plan in enumerate(plans):
+                            with cols[i]:
+                                with st.container(border=True):
+                                    st.markdown(f"#### {plan['name'].upper()}")
+                                    st.markdown(f"**${plan['price']}/mo**")
+                                    for feature in plan['features']:
+                                        st.markdown(f"- {feature}")
+                                        
+                                    is_current = plan['name'].lower() == current_plan.lower()
+                                    if is_current:
+                                        st.button("Current Plan", disabled=True, key=f"btn_{plan['name']}", use_container_width=True)
+                                    else:
+                                        if st.button("Upgrade", key=f"btn_{plan['name']}", use_container_width=True, type="primary"):
+                                            checkout_url = f"http://127.0.0.1:8000/billing/{selected_org_id}/checkout"
+                                            c_res = requests.post(checkout_url, json={"plan": plan['name']}, headers=headers)
+                                            if c_res.status_code == 200:
+                                                st.success(c_res.json().get("message"))
+                                                # Simulate redirect
+                                                st.markdown(f"[Proceed to Checkout]({c_res.json().get('checkout_url')})")
+                                                st.rerun()
+                                            else:
+                                                st.error(f"Failed to create checkout session: {c_res.text}")
+                    else:
+                        st.error("Failed to load plans.")
+                else:
+                    st.error(f"Failed to load subscription data: {s_res.text}")
         else:
             st.error("Failed to load organizations.")
     except Exception as e:

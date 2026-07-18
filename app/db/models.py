@@ -10,6 +10,9 @@ class Organization(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String, nullable=False)
     billing_plan = Column(String, default='free')
+    stripe_customer_id = Column(String, nullable=True)
+    stripe_subscription_id = Column(String, nullable=True)
+    subscription_status = Column(String, default="active")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     workspaces = relationship("Workspace", back_populates="organization", cascade="all, delete-orphan")
