@@ -584,7 +584,7 @@ Sentiment
 
 ## Sprint 45
 
-Prompt Engineering Studio
+Prompt Engineering Studio (Completed)
 Prompt Testing
 Prompt Library
 Evaluation

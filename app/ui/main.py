@@ -61,3 +61,6 @@ with col_main:
     elif active_view == "admin_portal":
         from app.ui.admin_portal import render_admin_portal
         render_admin_portal()
+    elif active_view == "prompt_studio":
+        from app.ui.prompt_studio import render_prompt_studio
+        render_prompt_studio()
