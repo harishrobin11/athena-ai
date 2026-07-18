@@ -99,7 +99,7 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     combined_context = f"[Enterprise Documents]:\n{doc_context}\n\n[Past Conversations]:\n{conv_context}"
 
     context_msg = AIMessage(
-        content=f"[Worker Result]: RAG fetch complete. Retrieved context:\n\n{combined_context}\n\nPlease route to 'FINISH'."
+        content=f"[Worker Result]: RAG fetch complete. Retrieved context:\n\n{combined_context}"
     )
     return {"messages": [context_msg], "next_step": "supervisor"}
 
@@ -136,7 +136,7 @@ async def code_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     response = await azure_llm.ainvoke([sys_prompt, query_prompt])
     
     context_msg = AIMessage(
-        content=f"[Worker Result]: Python execution completed.\n\n{response.content}\n\nPlease route to 'FINISH'."
+        content=f"[Worker Result]: Python execution completed.\n\n{response.content}"
     )
     return {"messages": [context_msg], "next_step": "supervisor"}
 
@@ -193,7 +193,7 @@ async def workflow_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     final_response = await azure_llm.ainvoke([sys_prompt, query_prompt])
     
     context_msg = AIMessage(
-        content=f"[Worker Result]: Workflow automation completed.\n\n{final_response.content}\n\nPlease route to 'FINISH'."
+        content=f"[Worker Result]: Workflow automation completed.\n\n{final_response.content}"
     )
     return {"messages": [context_msg], "next_step": "supervisor"}
 
@@ -223,7 +223,7 @@ async def research_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     response = await azure_llm.ainvoke([sys_prompt, query_prompt])
     
     context_msg = AIMessage(
-        content=f"[Worker Result]: Research completed.\n\n{response.content}\n\nPlease route to 'FINISH'."
+        content=f"[Worker Result]: Research completed.\n\n{response.content}"
     )
     return {"messages": [context_msg], "next_step": "supervisor"}
 
@@ -259,7 +259,7 @@ async def document_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     response = await azure_llm.ainvoke([sys_prompt, query_prompt])
     
     context_msg = AIMessage(
-        content=f"[Worker Result]: Document parsed.\n\n{response.content}\n\nPlease route to 'FINISH'."
+        content=f"[Worker Result]: Document parsed.\n\n{response.content}"
     )
     return {"messages": [context_msg], "next_step": "supervisor"}
 
@@ -298,7 +298,7 @@ async def sql_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     response = await azure_llm.ainvoke([sys_prompt, query_prompt])
     
     context_msg = AIMessage(
-        content=f"[Worker Result]: Database analysis completed.\n\n{response.content}\n\nPlease route to 'FINISH'."
+        content=f"[Worker Result]: Database analysis completed.\n\n{response.content}"
     )
     return {"messages": [context_msg], "next_step": "supervisor"}
 
