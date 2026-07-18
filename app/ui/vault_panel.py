@@ -7,11 +7,11 @@ import streamlit as st
 import requests
 from datetime import datetime
 
-BACKEND_URL = "/api/v1/vault"
+BACKEND_URL = "http://127.0.0.1:8000/api/v1/vault"
 
 def render_vault_management_panel():
     st.markdown("# :material/psychology: Athena EAIOS — AI Memory Vault")
-    st.caption("Sprint 21: Multi-Tenant Vector Workspace & Security Isolation Layer")
+    st.caption("Sprint 25: Multi-Tenant Vector Workspace & Security Isolation Layer")
     
     if "token" not in st.session_state or "user_profile" not in st.session_state:
         st.error("Unauthorized access. Please log in through the Streamlit Gateway Portal.", icon=":material/lock:")
@@ -24,7 +24,7 @@ def render_vault_management_panel():
     st.info(f"**Active Scope:** Tenant Boundary: `{user_dept}` | Security Role: `{user_role.upper()}`", icon=":material/security:")
     headers = {"Authorization": f"Bearer {token}"}
     
-    workspace_id = st.session_state.get("active_workspace_id")
+    workspace_id = st.session_state.get("workspace_id")
     if not workspace_id:
         st.warning("Please select a workspace from the sidebar first.", icon=":material/warning:")
         return
@@ -52,7 +52,7 @@ def render_vault_management_panel():
             with st.spinner("Scanned partitioned indices..."):
                 try:
                     endpoint = f"{BACKEND_URL}/query"
-                    payload = {"query": query_input, "top_k": top_k, "filter_metadata": {}}
+                    payload = {"query": query_input, "top_k": top_k, "workspace_id": workspace_id, "filter_metadata": {}}
                     response = requests.post(endpoint, json=payload, headers=headers)
                     if response.status_code == 200:
                         results = response.json().get("data", [])

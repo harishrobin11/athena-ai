@@ -9,11 +9,15 @@ class VaultDocument(BaseModel):
 
 class VaultWriteRequest(BaseModel):
     documents: List[VaultDocument]
+    tenant_id: str = Field(default="default", description="Tenant boundary ID")
+    workspace_id: str = Field(default="default", description="Workspace boundary ID")
 
 class VaultQueryRequest(BaseModel):
     query: str = Field(..., description="Semantic search query string")
     top_k: int = Field(default=4, ge=1, le=20, description="Number of documents to retrieve")
     filter_metadata: Optional[Dict[str, Any]] = Field(default=None, description="Optional metadata filters")
+    tenant_id: str = Field(default="default", description="Tenant boundary ID")
+    workspace_id: str = Field(default="default", description="Workspace boundary ID")
 
 class VaultResponse(BaseModel):
     success: bool

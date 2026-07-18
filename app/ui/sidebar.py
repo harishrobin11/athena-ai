@@ -19,11 +19,44 @@ def render_sidebar():
         st.markdown("### :material/psychology: Athena EAIOS")
         st.markdown("<br>", unsafe_allow_html=True)
 
+        # Fetch Organizations for Multi-Tenant UI
+        if "orgs_data" not in st.session_state:
+            try:
+                resp = requests.get("http://127.0.0.1:8000/orgs", headers=get_auth_headers(), timeout=5)
+                if resp.status_code == 200:
+                    st.session_state["orgs_data"] = resp.json()
+                else:
+                    st.session_state["orgs_data"] = []
+            except:
+                st.session_state["orgs_data"] = []
+                
+        orgs_data = st.session_state.get("orgs_data", [])
+
         with st.container(border=True):
             st.markdown("🏢 **Active Tenant**")
-            st.selectbox("Tenant", ["Admin's Org", "Guest Org"], label_visibility="collapsed")
-            st.markdown("<span style='font-size: 0.8rem; color: #94A3B8;'>Role: <span style='color: #4ADE80;'>ADMIN</span> | Dept: <span style='color: #4ADE80;'>ADMIN</span></span>", unsafe_allow_html=True)
-            st.selectbox("Workspace", ["Default Workspace", "Finance Workspace"], label_visibility="collapsed")
+            
+            if orgs_data:
+                org_names = [org["name"] for org in orgs_data]
+                selected_org_name = st.selectbox("Tenant", org_names, label_visibility="collapsed")
+                selected_org = next(org for org in orgs_data if org["name"] == selected_org_name)
+                
+                st.session_state["tenant_id"] = str(selected_org["id"])
+                st.session_state["role"] = selected_org["role"]
+                st.session_state["department"] = selected_org["department"]
+                
+                role_color = "#4ADE80" if selected_org["role"].lower() == "admin" else "#FBBF24"
+                st.markdown(f"<span style='font-size: 0.8rem; color: #94A3B8;'>Role: <span style='color: {role_color};'>{selected_org['role'].upper()}</span> | Dept: <span style='color: {role_color};'>{selected_org['department'].upper()}</span></span>", unsafe_allow_html=True)
+                
+                workspaces = selected_org.get("workspaces", [])
+                if workspaces:
+                    workspace_names = [w["name"] for w in workspaces]
+                    selected_workspace_name = st.selectbox("Workspace", workspace_names, label_visibility="collapsed")
+                    selected_workspace = next(w for w in workspaces if w["name"] == selected_workspace_name)
+                    st.session_state["workspace_id"] = str(selected_workspace["id"])
+                else:
+                    st.warning("No Workspaces found.")
+            else:
+                st.warning("No Organizations found.")
 
         st.markdown("<br>", unsafe_allow_html=True)
         

@@ -18,3 +18,5 @@ class AgentStreamPayload(BaseModel):
 class AgentChatRequest(BaseModel):
     message: str = Field(..., example="Analyze our Q3 compliance risk.")
     department: Optional[str] = Field(None, example="FINANCE")
+    tenant_id: Optional[str] = Field("default", example="1")
+    workspace_id: Optional[str] = Field("default", example="1")

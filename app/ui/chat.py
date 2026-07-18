@@ -8,7 +8,7 @@ def get_auth_headers():
         f"Bearer {st.session_state['token']}"
     }
 
-API_URL = "http://127.0.0.1:8000/chat"
+API_URL = "http://127.0.0.1:8000/api/v1/agent/chat"
 CONVERSATION_API = "http://127.0.0.1:8000/conversations"
 TITLE_API = "http://127.0.0.1:8000/conversations"
 
@@ -103,11 +103,17 @@ def render_chat():
                         content_type,
                     )
                 }
+                
+                payload_data = {}
+                if "workspace_id" in st.session_state:
+                    payload_data["workspace_id"] = st.session_state["workspace_id"]
+                    
                 try:
                     upload_url = "http://127.0.0.1:8000/upload"
                     res = requests.post(
                         upload_url,
                         files=payload_files,
+                        data=payload_data,
                         headers=get_auth_headers(),
                     )
                     if res.status_code == 200:
@@ -154,63 +160,79 @@ def render_chat():
             st.markdown(prompt)
 
         with st.spinner("Athena is thinking..."):
+            status_box = st.empty()
+            thought_box = st.empty()
+            text_box = st.empty()
+            
+            accumulated_text = ""
+            accumulated_thoughts = []
+            
             try:
-                sel_docs = [] if st.session_state.get("selected_document", "All Documents") == "All Documents" else [st.session_state.get("selected_document")]
+                # Prepare payload with multi-tenant context from session state
+                req_payload = {
+                    "message": prompt,
+                    "department": st.session_state.get("department", "GENERAL"),
+                    "tenant_id": st.session_state.get("tenant_id", "default"),
+                    "workspace_id": st.session_state.get("workspace_id", "default")
+                }
                 
-                if image_to_chat:
-                    # Send to image endpoint
-                    import mimetypes
-                    content_type, _ = mimetypes.guess_type(image_to_chat.name)
-                    if not content_type:
-                        content_type = "image/jpeg"
-                        
-                    files_payload = {
-                        "image": (image_to_chat.name, image_to_chat.getvalue(), content_type)
-                    }
-                    data_payload = {
-                        "message": prompt,
-                    }
-                    if st.session_state.get("conversation_id"):
-                        data_payload["conversation_id"] = st.session_state.get("conversation_id")
-                    
-                    if sel_docs:
-                        # Ensure we format this correctly for form data list
-                        data_payload["selected_documents"] = sel_docs
-                        
-                    response = requests.post(
-                        "http://127.0.0.1:8000/chat/image",
-                        data=data_payload,
-                        files=files_payload,
-                        headers=get_auth_headers(),
-                        timeout=120,
-                    )
-                else:
-                    # Send to text endpoint
-                    response = requests.post(
-                        API_URL,
-                        json={
-                            "message": prompt,
-                            "history": st.session_state.messages,
-                            "conversation_id": st.session_state.get("conversation_id"),
-                            "selected_documents": sel_docs,
-                        },
-                        headers=get_auth_headers(),
-                        timeout=120,
-                    )
-
-                response.raise_for_status()
-                data = response.json()
-                answer = data["response"]
-
-                sources = data.get("sources", [])
-                if sources:
-                    citation_text = "\n\n📚 Sources\n"
-                    for source in sources:
-                        citation_text += f"\n• {source['filename']} (Page {source['page']})"
-                    answer += citation_text
+                with requests.post(API_URL, json=req_payload, stream=True, headers=get_auth_headers()) as response:
+                    if response.status_code != 200:
+                        st.error(f"Backend returned status code: {response.status_code}")
+                    else:
+                        import json
+                        for line in response.iter_lines(decode_unicode=True):
+                            if not line:
+                                continue
+                            
+                            if line.startswith("data: "):
+                                raw_json = line[6:].strip()
+                                if not raw_json or raw_json == "__END__":
+                                    continue
+                                
+                                try:
+                                    event_data = json.loads(raw_json)
+                                except Exception:
+                                    if isinstance(raw_json, str):
+                                        accumulated_text += json.loads(f'"{raw_json}"') if raw_json.startswith('"') else raw_json
+                                        text_box.markdown(accumulated_text)
+                                    continue
+                                    
+                                if isinstance(event_data, dict):
+                                    if "error" in event_data:
+                                        st.error(f"Backend Node Error: {event_data['error']}")
+                                        continue
+                                        
+                                    event_type = str(event_data.get("event_type", "")).upper()
+                                    node_name = event_data.get("node_name", "Orchestrator")
+                                    content = event_data.get("content", "")
+                                    
+                                    if "THOUGHT" in event_type:
+                                        accumulated_thoughts.append(f"**[{node_name}]**: {content}")
+                                        with thought_box.expander("🛠️ View Agent Timeline", expanded=True):
+                                            st.markdown("\\n\\n".join(accumulated_thoughts))
+                                            
+                                    elif "TOKEN" in event_type:
+                                        accumulated_text += content
+                                        text_box.markdown(accumulated_text)
+                                        
+                                    elif "FINAL" in event_type:
+                                        status_box.empty()
+                                        if not accumulated_text:
+                                            text_box.markdown(content)
+                                            accumulated_text = content
+                                            
+                                        sources = event_data.get("metadata", {}).get("sources", [])
+                                        if sources:
+                                            st.caption(f"📚 **Verified Source Contexts:** {', '.join(sources)}")
+                                else:
+                                    accumulated_text += str(event_data)
+                                    text_box.markdown(accumulated_text)
+                                    
+                answer = accumulated_text
 
             except Exception as e:
-                answer = f"❌ Error:\n\n{e}"
+                answer = f"❌ Error:\\n\\n{e}"
 
         st.session_state.messages.append(
             {

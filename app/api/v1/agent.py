@@ -19,7 +19,11 @@ async def agent_chat(
         "messages": [HumanMessage(content=payload.message)],
         "department_boundary": department,
         "execution_plan": [],
-        "next_step": "supervisor"
+        "next_step": "supervisor",
+        "tenant_id": payload.tenant_id,
+        "workspace_id": payload.workspace_id,
+        "user_id": "api_user",
+        "context_metadata": {"dept_id": department, "workspace_id": payload.workspace_id}
     }
 
     async def event_generator():

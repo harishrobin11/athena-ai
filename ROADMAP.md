@@ -377,7 +377,7 @@ Answer
 
 ## Sprint 25
 
-Multi-Tenant Architecture
+Multi-Tenant Architecture (Completed)
 
 Features
 * Organizations

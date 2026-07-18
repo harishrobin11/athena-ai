@@ -458,7 +458,7 @@ def cancel_chat(generation_id: str):
 # RAG PERSISTENT KNOWLEDGE DOCUMENT SERVICE
 # =====================================================================
 @router.post("/upload", response_model=UploadResponse)
-def upload(file: UploadFile = File(...), current_user=Depends(get_current_user)):
+def upload(file: UploadFile = File(...), workspace_id: Optional[int] = Form(None), current_user=Depends(get_current_user)):
     user_id = current_user["user_id"]
     
     # 1. Read bytes and upload directly to MinIO S3
@@ -486,9 +486,7 @@ def upload(file: UploadFile = File(...), current_user=Depends(get_current_user))
         os.unlink(tmp_path) # Clean up temp file
 
     # 3. Save standard DB tracking metrics
-    workspace_id = None # Assuming we might want this via header/form in the future
-    # Using None for now since /documents/upload doesn't take workspace_id yet, but we'll add it later.
-    add_document(user_id, file.filename, object_key=object_key)
+    add_document(user_id, file.filename, object_key=object_key, workspace_id=workspace_id)
     return UploadResponse(filename=file.filename, chunks=chunks)
 
 @router.get("/documents", response_model=DocumentsResponse)
