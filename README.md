@@ -1,12 +1,12 @@
-# 🚀 Athena AI (v1.0 Production)
+# 🚀 Athena AI (v2.0 Enterprise Intelligence)
 
-> Enterprise Intelligence Platform for Intelligent Finance Operations
+> The Ultimate Enterprise Knowledge Platform for Intelligent Operations
 
 ---
 
 ## Status
 
-🚀 **Production-Ready v1.0 Launched**
+🚀 **Phase 6 Completed: Enterprise Intelligence Engine is LIVE**
 
 ---
 
@@ -15,13 +15,14 @@
 Athena AI is a production-grade Enterprise AI Platform that combines:
 
 - LLM Orchestration via LangGraph
-- Agentic Workflows (Finance & Legal Analysis)
-- Retrieval-Augmented Generation (ChromaDB)
+- Advanced Neural Re-ranking & Contextual RAG
+- Visual Prompt Studio & Dynamic Workflow Testing
+- Durable NLP (Fast Offline NER & Sentiment)
+- Safety Interception Guardrails (PII Masking & Injection Filtering)
 - Multi-Tenant Security & Isolation
-- OpenTelemetry Observability
-- Distributed Caching
+- Distributed Caching & OpenTelemetry Observability
 
-to automate enterprise finance workflows.
+to automate enterprise workflows effortlessly and securely.
 
 ---
 
@@ -29,7 +30,7 @@ to automate enterprise finance workflows.
 
 - **Backend**: FastAPI (Python 3.11)
 - **Frontend**: Streamlit
-- **Database**: PostgreSQL & SQLite via SQLAlchemy / Alembic
+- **Databases**: PostgreSQL (Relational), Neo4j (Graph), ChromaDB (Vector), Redis (Cache)
 - **Deployment Topology**: 
   - Docker Multi-stage Containerization
   - Kubernetes (HPA scaling, Deployments, Services)
@@ -39,9 +40,14 @@ to automate enterprise finance workflows.
 
 ## Quickstart (Local Docker)
 
+The entire environment (including NLP models and OCR bindings) is fully containerized.
+
 ```bash
+# Build the production image (this will download spacy models inside the container)
 docker build -t athena-ai .
-docker run -p 8000:8000 athena-ai
+
+# Run the backend and frontend simultaneously
+docker run -p 8000:8000 -p 8501:8501 athena-ai
 ```
 
 ---

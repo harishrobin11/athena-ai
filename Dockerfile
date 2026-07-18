@@ -4,6 +4,9 @@ FROM python:3.11-slim as builder
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --user --no-cache-dir --default-timeout=1000 -r requirements.txt
+# Ensure scripts in .local are usable for spacy download:
+ENV PATH=/root/.local/bin:$PATH
+RUN python -m spacy download en_core_web_sm
 
 # Stage 2: Production
 FROM python:3.11-slim

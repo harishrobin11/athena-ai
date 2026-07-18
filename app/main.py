@@ -20,7 +20,6 @@ from app.api.marketplace import router as marketplace_router
 from app.api.organizations import router as org_router
 from app.api.workspaces import router as workspace_router
 from app.api.billing import router as billing_router
-from app.api.admin import router as admin_router
 from fastapi_limiter import FastAPILimiter
 from app.db.redis import redis_manager
 from contextlib import asynccontextmanager
