@@ -517,7 +517,7 @@ SQLite → PostgreSQL
 
 ## Sprint 38
 
-CI/CD
+CI/CD (Completed)
 GitHub Actions
 Docker Registry
 Deployment
