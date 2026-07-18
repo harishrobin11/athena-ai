@@ -19,6 +19,7 @@ Operational Instructions:
 - If the user asks to parse, read, extract, or layout analyze a specific PDF document (like an invoice), output 'document_worker'.
 - If the user asks to query a database, analyze raw relational data, or run SQL metrics, output 'sql_worker'.
 - If the user asks for numbers math, visualization, or structural logic, output 'code_worker'.
+- If the user asks to automate a multi-step sequence, trigger an external API, or schedule a recurring background task, output 'workflow_worker'.
 - If the required data has been successfully fetched and processed by a worker, or if the request requires direct casual conversation, output 'FINISH'.
 - Respond ONLY with a clean, unquoted JSON object matching this exact schema:
 {{

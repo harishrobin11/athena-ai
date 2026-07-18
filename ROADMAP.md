@@ -344,7 +344,7 @@ Capabilities
 
 ## Sprint 23
 
-Workflow Agent
+Workflow Agent (Completed)
 
 Capabilities
 * Multi-step Automation

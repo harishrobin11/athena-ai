@@ -7,6 +7,8 @@ from .document_ai_tool import analyze_document_layout
 from .web_search import web_search_tool
 from .sql_tool import execute_sql_query
 from .python_tool import execute_python_code
+from .api_tool import execute_api_call
+from .schedule_tool import schedule_task
 
 
 TOOLS = {
@@ -19,6 +21,8 @@ TOOLS = {
     "web_search": web_search_tool,
     "execute_sql": execute_sql_query,
     "execute_python": execute_python_code,
+    "execute_api": execute_api_call,
+    "schedule_task": schedule_task,
 }
 
 

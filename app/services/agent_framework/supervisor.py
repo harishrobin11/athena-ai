@@ -140,6 +140,63 @@ async def code_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     )
     return {"messages": [context_msg], "next_step": "supervisor"}
 
+async def workflow_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
+    from app.tools.registry import execute_tool
+    from langchain_core.messages import SystemMessage, HumanMessage
+    import json
+    
+    user_query = ""
+    for msg in reversed(state.get("messages", [])):
+        if msg.type == "human":
+            user_query = msg.content
+            break
+
+    # 1. Determine Workflow Tasks
+    wf_gen_prompt = SystemMessage(
+        content="You are an expert Workflow Automation Agent. Based on the user's request, determine the necessary API calls and schedule configurations. Output a JSON object with 'api_calls' (list of dicts with url, method, payload) and 'schedule' (dict with task_name, delay/cron_expression, or null if no schedule). Return ONLY the raw JSON without markdown."
+    )
+    wf_gen_query = HumanMessage(content=user_query)
+    wf_response = await azure_llm.ainvoke([wf_gen_prompt, wf_gen_query])
+    
+    try:
+        wf_json_str = wf_response.content.strip().replace("```json", "").replace("```", "").strip()
+        wf_plan = json.loads(wf_json_str)
+    except json.JSONDecodeError:
+        wf_plan = {"api_calls": [], "schedule": None}
+
+    results = []
+    
+    # 2. Execute API Calls
+    for api_call in wf_plan.get("api_calls", []):
+        print(f"[WORKFLOW WORKER] Executing API call: {api_call}")
+        res = execute_tool("execute_api", json.dumps(api_call))
+        results.append(f"API Output: {res}")
+        
+    # 3. Schedule Task
+    schedule_config = wf_plan.get("schedule")
+    if schedule_config:
+        print(f"[WORKFLOW WORKER] Scheduling task: {schedule_config}")
+        res = execute_tool("schedule_task", json.dumps(schedule_config))
+        results.append(f"Schedule Output: {res}")
+
+    combined_results = "\n".join(results)
+    
+    # 4. Synthesize output
+    sys_prompt = SystemMessage(
+        content="You are the Athena Workflow Architect. Synthesize the execution outputs of the workflow steps into a clear, natural language summary."
+    )
+    
+    query_prompt = HumanMessage(
+        content=f"User Query: {user_query}\n\nWorkflow Output:\n{combined_results}\n\nPlease provide a clear human-readable summary of the automated actions."
+    )
+    
+    final_response = await azure_llm.ainvoke([sys_prompt, query_prompt])
+    
+    context_msg = AIMessage(
+        content=f"[Worker Result]: Workflow automation completed.\n\n{final_response.content}\n\nPlease route to 'FINISH'."
+    )
+    return {"messages": [context_msg], "next_step": "supervisor"}
+
 async def research_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     from app.tools.registry import execute_tool
     from langchain_core.messages import SystemMessage, HumanMessage
