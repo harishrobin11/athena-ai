@@ -61,6 +61,33 @@ services:
     networks:
       - athena_network
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: athena_prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - athena_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: athena_grafana
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - athena_network
+    depends_on:
+      - prometheus
+
 networks:
   athena_network:
     driver: bridge
