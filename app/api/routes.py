@@ -354,6 +354,19 @@ def chat(request: ChatRequest, current_user=Depends(get_current_user)):
 
 @router.post("/chat/stream")
 async def chat_stream(request: ChatRequest, current_user=Depends(get_current_user)):
+    from app.services.safety_service import SafetyService
+    
+    # 1. Prompt Injection Check
+    if SafetyService.scan_for_injection(request.message) or SafetyService.check_toxicity(request.message):
+        async def rejection_stream():
+            yield sse_data("I'm sorry, I cannot process requests that attempt to bypass safety protocols or contain abusive language.")
+            yield sse_data("__END__")
+        return StreamingResponse(rejection_stream(), media_type="text/event-stream")
+
+    # 2. PII Redaction
+    safe_message = SafetyService.redact_pii(request.message)
+    request.message = safe_message
+
     user_message = request.message.strip().lower()
     
     active_username = current_user.get("full_name") or current_user.get("username", "User")

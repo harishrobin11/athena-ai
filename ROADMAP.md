@@ -593,11 +593,10 @@ Evaluation
 
 ## Sprint 46
 
-AI Safety
-Guardrails
-Moderation
-PII Detection
-Prompt Injection Protection
+Safety Guardrails (Completed)
+PII Redaction
+Prompt Injection Filtering
+Toxicity Detection
 
 ---
 
