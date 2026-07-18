@@ -131,4 +131,6 @@ langchain-openai
 azure-search-documents
 redis
 fastapi-limiter==0.1.6
-psycopg2-binary
+psycopg2-binary==2.9.9
+mlflow==2.11.0
+setuptools

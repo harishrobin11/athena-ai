@@ -38,6 +38,9 @@ else:
 
 orchestrator = AthenaSupervisorOrchestrator(azure_llm=azure_llm)
 
+from app.core.llm_ops import track_prompt_execution
+
+@track_prompt_execution(prompt_version="v1.0", task_name="supervisor_routing")
 async def supervisor_node(state: AthenaAgentState) -> Dict[str, Any]:
     """
     Invokes the production Azure OpenAI structural JSON supervisor pipeline
@@ -279,6 +282,7 @@ async def document_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     )
     return {"messages": [context_msg], "next_step": "supervisor"}
 
+@track_prompt_execution(prompt_version="v1.0", task_name="sql_analytics")
 async def sql_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     from app.tools.registry import execute_tool
     from langchain_core.messages import SystemMessage, HumanMessage

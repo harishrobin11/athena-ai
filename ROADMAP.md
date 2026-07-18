@@ -535,7 +535,7 @@ Logging
 
 ## Sprint 40
 
-LLMOps
+LLMOps (Completed)
 MLflow
 Prompt Versioning
 Evaluation
