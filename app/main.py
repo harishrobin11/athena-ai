@@ -21,6 +21,7 @@ from app.api.marketplace import router as marketplace_router
 from app.api.organizations import router as org_router
 from app.api.workspaces import router as workspace_router
 from app.api.billing import router as billing_router
+from app.api.notifications import router as notifications_router
 from fastapi_limiter import FastAPILimiter
 from app.db.redis import redis_manager
 from contextlib import asynccontextmanager
@@ -129,6 +130,9 @@ app.include_router(billing_router)
 
 # 5. Mount the Admin router
 app.include_router(admin_router)
+
+# 6. Mount Notification System (Sprint 51)
+app.include_router(notifications_router)
 
 if __name__ == "__main__":
     import uvicorn
