@@ -548,7 +548,7 @@ Evaluation
 
 ## Sprint 41
 
-OCR Engine
+OCR Engine (Completed)
 Invoices
 Receipts
 Forms

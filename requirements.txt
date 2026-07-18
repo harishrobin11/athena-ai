@@ -134,3 +134,4 @@ fastapi-limiter==0.1.6
 psycopg2-binary==2.9.9
 mlflow==2.11.0
 setuptools
+azure-ai-documentintelligence==1.0.0b1

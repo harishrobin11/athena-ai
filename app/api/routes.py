@@ -509,6 +509,20 @@ def upload(
         tmp_path = tmp.name
 
     try:
+        from app.rag.ocr_engine import ocr_engine
+        # Process images via OCR
+        is_image = file.content_type in ["image/jpeg", "image/png", "image/tiff"]
+        
+        if is_image and ocr_engine.client:
+            ocr_result = ocr_engine.analyze_invoice(file_bytes)
+            if ocr_result:
+                text_content = ocr_result["content"]
+                # For images, we write the extracted OCR text to a tmp .txt file for standard RAG ingestion
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w") as tmp_txt:
+                    tmp_txt.write(text_content)
+                    os.unlink(tmp_path) # Clean up original pdf tmp
+                    tmp_path = tmp_txt.name
+                    
         # Ingest from the temporary local file path
         chunks = document_service.ingest(tmp_path, user_id=user_id)
     finally:
