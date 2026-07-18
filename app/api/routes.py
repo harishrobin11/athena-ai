@@ -466,7 +466,20 @@ def upload(file: UploadFile = File(...), workspace_id: Optional[int] = Form(None
     user_id = current_user["user_id"]
     if workspace_id:
         from app.auth.permissions import check_workspace_permission
+        from app.db.models import Workspace, Organization, Document
+        from app.core.billing_config import TIER_LIMITS, check_limit
+        
         check_workspace_permission(workspace_id, ["owner", "admin", "manager", "developer"], current_user, db)
+        
+        # Enforce Billing limits for Documents
+        workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+        if workspace:
+            org = db.query(Organization).filter(Organization.id == workspace.organization_id).first()
+            if org:
+                current_docs = db.query(Document).join(Workspace).filter(Workspace.organization_id == org.id).count()
+                limits = TIER_LIMITS.get(org.billing_plan.lower(), TIER_LIMITS["free"])
+                if not check_limit(current_docs, limits["max_documents"]):
+                    raise HTTPException(status_code=402, detail="Document upload limit reached for current billing tier")
     
     # 1. Read bytes and upload directly to MinIO S3
     file_bytes = file.file.read()

@@ -427,7 +427,7 @@ Plans
 
 ## Sprint 29
 
-Billing
+Billing (Completed)
 
 Features
 * Usage Tracking

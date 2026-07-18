@@ -3,8 +3,9 @@ from typing import List
 from pydantic import BaseModel
 from app.auth.dependencies import get_current_user
 from app.db.database import get_db
-from app.db.models import Workspace, UserRole
+from app.db.models import Workspace, UserRole, Organization
 from app.api.models import WorkspaceResponse
+from app.core.billing_config import TIER_LIMITS, check_limit
 
 router = APIRouter(prefix="/orgs/{org_id}/workspaces", tags=["Workspaces"])
 
@@ -38,8 +39,17 @@ def create_workspace(
     
     # Verify user belongs to this org and is an admin
     role = db.query(UserRole).filter(UserRole.user_id == user_id, UserRole.organization_id == org_id).first()
-    if not role or role.role != 'admin':
-        raise HTTPException(status_code=403, detail="Only admins can create workspaces")
+    if not role or role.role not in ['owner', 'admin']:
+        raise HTTPException(status_code=403, detail="Only owners/admins can create workspaces")
+        
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+        
+    current_workspaces = db.query(Workspace).filter(Workspace.organization_id == org_id).count()
+    limits = TIER_LIMITS.get(org.billing_plan.lower(), TIER_LIMITS["free"])
+    if not check_limit(current_workspaces, limits["max_workspaces"]):
+        raise HTTPException(status_code=402, detail="Workspace limit reached for current billing tier")
         
     workspace = Workspace(organization_id=org_id, name=request.name)
     db.add(workspace)

@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.db.database import get_db
 from app.auth.dependencies import get_current_user
 from app.auth.permissions import OrgRBACGuard
-from app.db.models import Organization
+from app.db.models import Organization, Workspace, Document, TokenUsage
+from app.core.billing_config import TIER_LIMITS
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/billing", tags=["Billing & Subscriptions"])
@@ -33,6 +35,33 @@ def get_subscription(org_id: int, current_user=Depends(OrgRBACGuard(["owner", "a
         "data": {
             "billing_plan": org.billing_plan,
             "status": org.subscription_status
+        }
+    }
+
+@router.get("/{org_id}/usage")
+def get_usage(org_id: int, current_user=Depends(OrgRBACGuard(["owner", "admin"])), db: Session = Depends(get_db)):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+        
+    plan = org.billing_plan.lower()
+    limits = TIER_LIMITS.get(plan, TIER_LIMITS["free"])
+    
+    # Workspaces count
+    workspaces_count = db.query(Workspace).filter(Workspace.organization_id == org_id).count()
+    
+    # Documents count
+    documents_count = db.query(Document).join(Workspace).filter(Workspace.organization_id == org_id).count()
+    
+    # Tokens count (all time for MVP, could filter by current month)
+    tokens_sum = db.query(func.sum(TokenUsage.tokens)).join(Workspace).filter(Workspace.organization_id == org_id).scalar() or 0
+    
+    return {
+        "success": True,
+        "data": {
+            "workspaces": {"current": workspaces_count, "limit": limits["max_workspaces"]},
+            "documents": {"current": documents_count, "limit": limits["max_documents"]},
+            "tokens": {"current": tokens_sum, "limit": limits["max_tokens_per_month"]}
         }
     }
 

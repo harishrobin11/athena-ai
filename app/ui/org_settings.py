@@ -107,6 +107,38 @@ def render_org_settings_panel():
                     current_plan = sub_data.get("billing_plan", "free").upper()
                     st.info(f"**Current Plan**: {current_plan} | **Status**: {sub_data.get('status', 'active').capitalize()}")
                     
+                    usage_url = f"http://127.0.0.1:8000/billing/{selected_org_id}/usage"
+                    u_res = requests.get(usage_url, headers=headers)
+                    if u_res.status_code == 200:
+                        usage_data = u_res.json().get("data", {})
+                        st.markdown("### Current Usage")
+                        col_w, col_d, col_t = st.columns(3)
+                        
+                        def format_limit(limit):
+                            return str(limit) if limit != -1 else "Unlimited"
+                            
+                        with col_w:
+                            current_w = usage_data['workspaces']['current']
+                            limit_w = usage_data['workspaces']['limit']
+                            st.metric("Workspaces", f"{current_w} / {format_limit(limit_w)}")
+                            if limit_w != -1:
+                                st.progress(min(1.0, current_w / max(1, limit_w)))
+                                
+                        with col_d:
+                            current_d = usage_data['documents']['current']
+                            limit_d = usage_data['documents']['limit']
+                            st.metric("Documents", f"{current_d} / {format_limit(limit_d)}")
+                            if limit_d != -1:
+                                st.progress(min(1.0, current_d / max(1, limit_d)))
+                                
+                        with col_t:
+                            current_t = usage_data['tokens']['current']
+                            limit_t = usage_data['tokens']['limit']
+                            st.metric("Tokens (Month)", f"{current_t} / {format_limit(limit_t)}")
+                            if limit_t != -1:
+                                st.progress(min(1.0, current_t / max(1, limit_t)))
+                    st.divider()
+                    
                     plans_url = "http://127.0.0.1:8000/billing/plans"
                     p_res = requests.get(plans_url, headers=headers)
                     if p_res.status_code == 200:
