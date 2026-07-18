@@ -574,7 +574,7 @@ Cross Encoder
 
 ## Sprint 44
 
-Enterprise NLP
+Enterprise NLP (Completed)
 NER
 Classification
 Summarization
