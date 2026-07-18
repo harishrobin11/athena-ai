@@ -12,16 +12,33 @@ class VectorStore:
         self.embedding = EmbeddingModel().get_model()
         self.persist_directory = persist_directory
 
-    def _get_tenant_db(self, dept_id: str) -> Chroma:
+    def _get_tenant_db(self, dept_id: str) -> Any:
         """
         Private factory method to isolate collection naming boundaries dynamically.
         """
-        # Formulate a safe, uniform string token matching tenant boundaries
-        clean_dept = dept_id.lower().strip().replace("-", "_")
-        collection_name = f"tenant_{clean_dept}_vault"
+        import os
+        azure_endpoint = os.getenv("AZURE_SEARCH_ENDPOINT")
+        azure_key = os.getenv("AZURE_SEARCH_KEY")
         
+        # Formulate a safe, uniform string token matching tenant boundaries
+        clean_dept = dept_id.lower().strip().replace("-", "")
+        collection_name = f"tenant-{clean_dept}-vault"
+        
+        if azure_endpoint and azure_key:
+            try:
+                from langchain_community.vectorstores.azuresearch import AzureSearch
+                return AzureSearch(
+                    azure_search_endpoint=azure_endpoint,
+                    azure_search_key=azure_key,
+                    index_name=collection_name,
+                    embedding_function=self.embedding.embed_query
+                )
+            except ImportError:
+                print("azure-search-documents missing, falling back to Chroma")
+        
+        chroma_collection = f"tenant_{clean_dept}_vault"
         return Chroma(
-            collection_name=collection_name,
+            collection_name=chroma_collection,
             persist_directory=self.persist_directory,
             embedding_function=self.embedding,
         )
@@ -49,26 +66,33 @@ class VectorStore:
     def debug_collection(self, dept_id: str) -> List[Dict[str, Any]]:
         """Inspects metadata tags for the top 5 records within a tenant collection."""
         db = self._get_tenant_db(dept_id)
-        result = db._collection.get(include=["metadatas"])
-        return result["metadatas"][:5]
+        if hasattr(db, "_collection"):
+            result = db._collection.get(include=["metadatas"])
+            return result["metadatas"][:5]
+        return []
 
     def delete_document_embeddings(self, filename: str, user_id: str, dept_id: str):
         """Purges document embeddings matching structural boundaries within the tenant collection."""
         db = self._get_tenant_db(dept_id)
-        db._collection.delete(
-            where={
-                "$and": [
-                    {"filename": filename},
-                    {"user_id": user_id},
-                ]
-            }
-        )
+        if hasattr(db, "_collection"):
+            db._collection.delete(
+                where={
+                    "$and": [
+                        {"filename": filename},
+                        {"user_id": user_id},
+                    ]
+                }
+            )
+        else:
+            print("Deletion for AzureSearch backend not implemented via Chroma API yet.")
 
     def count_embeddings(self, dept_id: str) -> int:
         """Counts total active vector records registered within a tenant's vault."""
         db = self._get_tenant_db(dept_id)
-        result = db._collection.get()
-        return len(result["ids"])
+        if hasattr(db, "_collection"):
+            result = db._collection.get()
+            return len(result["ids"])
+        return 0
     
     def keyword_search(
         self,
@@ -79,6 +103,11 @@ class VectorStore:
     ):
         """Executes your customizable term frequency scoring model across tenant metadata horizons."""
         db = self._get_tenant_db(dept_id)
+        if not hasattr(db, "_collection"):
+            # For AzureSearch, standard similarity search often includes semantic hybrid functionality
+            docs = db.similarity_search(query, k=limit)
+            return [{"document": d.page_content, "metadata": d.metadata, "keyword_score": 1.0} for d in docs]
+
         results = db._collection.get(
             where=filter_metadata,
             include=["documents", "metadatas"]

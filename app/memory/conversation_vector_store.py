@@ -11,6 +11,23 @@ class ConversationVectorStore:
         persist_directory="data/chroma_conversations",
     ):
         self.embedding = EmbeddingModel().get_model()
+        
+        import os
+        azure_endpoint = os.getenv("AZURE_SEARCH_ENDPOINT")
+        azure_key = os.getenv("AZURE_SEARCH_KEY")
+        
+        if azure_endpoint and azure_key:
+            try:
+                from langchain_community.vectorstores.azuresearch import AzureSearch
+                self.db = AzureSearch(
+                    azure_search_endpoint=azure_endpoint,
+                    azure_search_key=azure_key,
+                    index_name="athena-conversations",
+                    embedding_function=self.embedding.embed_query
+                )
+                return
+            except ImportError:
+                print("azure-search-documents missing, falling back to Chroma")
 
         self.db = Chroma(
             persist_directory=persist_directory,

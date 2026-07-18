@@ -128,3 +128,4 @@ prometheus-fastapi-instrumentator==7.0.0
 duckduckgo-search
 azure-storage-blob
 langchain-openai
+azure-search-documents

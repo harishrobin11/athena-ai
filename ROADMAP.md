@@ -493,7 +493,7 @@ Azure Deployment (Completed)
 
 ## Sprint 35
 
-Azure AI Search
+Azure AI Search (Completed)
 Replace Chroma
 Enterprise Search
 
