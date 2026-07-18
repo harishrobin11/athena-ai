@@ -1,55 +1,52 @@
-# 🚀 Athena AI (v2.0 Enterprise Intelligence)
+# Athena AI 🦉
 
-> The Ultimate Enterprise Knowledge Platform for Intelligent Operations
+[![Continuous Integration](https://github.com/username/athena-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/username/athena-ai/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)]()
+[![License](https://img.shields.io/badge/license-Proprietary-blue.svg)]()
 
----
+**Athena AI** is a state-of-the-art Multi-Agent Automation Platform built for the enterprise. It features a fully distributed backend, real-time analytics, and secure multi-tenant workspaces.
 
-## Status
+## ✨ Features
+- **Multi-Agent Orchestration**: Seamless collaboration between specialized AI agents using LangGraph.
+- **AI Memory Vault**: RAG-powered document ingestion and retrieval, vectorized in ChromaDB.
+- **Workflow Automation**: Drag-and-drop workflow builder backed by distributed Celery background workers.
+- **Real-time Analytics**: Live telemetry streaming via WebSockets.
+- **Enterprise Security**: Role-based access control, tenant isolation, and strict metadata boundaries.
+- **Observability**: Fully instrumented with Prometheus and visualized out-of-the-box with Grafana.
 
-🚀 **Phase 6 Completed: Enterprise Intelligence Engine is LIVE**
+## 🏗️ Architecture
+Athena AI is fully containerized and composed of the following microservices:
+1. **API Gateway (Nginx)**: Routes external traffic efficiently.
+2. **Backend (FastAPI)**: The core intelligence and API layer.
+3. **Frontend (React/Vite)**: A gorgeous, responsive SPA served statically via Nginx.
+4. **Celery Worker**: Offloads heavy processing (OCR, ML models).
+5. **Redis**: In-memory message broker, rate limiter, and cache.
+6. **Prometheus & Grafana**: Telemetry scraping and interactive dashboards.
 
----
+## 🚀 Getting Started
 
-## Vision
+Ensure you have Docker and Docker Compose installed.
 
-Athena AI is a production-grade Enterprise AI Platform that combines:
-
-- LLM Orchestration via LangGraph
-- Advanced Neural Re-ranking & Contextual RAG
-- Visual Prompt Studio & Dynamic Workflow Testing
-- Durable NLP (Fast Offline NER & Sentiment)
-- Safety Interception Guardrails (PII Masking & Injection Filtering)
-- Multi-Tenant Security & Isolation
-- Distributed Caching & OpenTelemetry Observability
-
-to automate enterprise workflows effortlessly and securely.
-
----
-
-## Architecture & Deployment
-
-- **Backend**: FastAPI (Python 3.11)
-- **Frontend**: Streamlit
-- **Databases**: PostgreSQL (Relational), Neo4j (Graph), ChromaDB (Vector), Redis (Cache)
-- **Deployment Topology**: 
-  - Docker Multi-stage Containerization
-  - Kubernetes (HPA scaling, Deployments, Services)
-  - GitHub Actions CI/CD (Trivy Scans, Linting)
-
----
-
-## Quickstart (Local Docker)
-
-The entire environment (including NLP models and OCR bindings) is fully containerized.
-
+### 1. Boot the Cluster
 ```bash
-# Build the production image (this will download spacy models inside the container)
-docker build -t athena-ai .
-
-# Run the backend and frontend simultaneously
-docker run -p 8000:8000 -p 8501:8501 athena-ai
+docker-compose up -d --build
 ```
 
----
+### 2. Access the Application
+- **Main Interface**: [http://localhost](http://localhost)
+- **API Docs (Swagger)**: [http://localhost/api/v1/docs](http://localhost/api/v1/docs)
+- **Grafana Dashboards**: [http://localhost:3001](http://localhost:3001) *(Login: admin / admin)*
+- **Prometheus Targets**: [http://localhost:9090/targets](http://localhost:9090/targets)
 
-## License
+## 🧪 Running Tests
+To run the automated test suite locally:
+```bash
+# Backend tests
+pytest tests/ -v
+
+# Frontend build check
+cd frontend && npm run build
+```
+
+## 📜 License
+Proprietary & Confidential. All rights reserved.

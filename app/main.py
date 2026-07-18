@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Athena AI Core Engine",
     description="Sprint 8 Production API & Sprint 21 Architecture Unified API Gateway — Multi-Tenant Isolation",
-    version="21.0.0",
+    version="1.0.0",
     lifespan=lifespan,
     contact={
         "name": "Athena AI Team",
