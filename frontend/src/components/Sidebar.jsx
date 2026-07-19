@@ -8,6 +8,7 @@ export default function Sidebar({ activeView, setActiveView }) {
     { id: 'integration', label: 'API Hub',          icon: '🔌' },
     { id: 'security',    label: 'Security',         icon: '🔐' },
     { id: 'performance', label: 'Performance',      icon: '📈' },
+    { id: 'settings',    label: 'Settings',         icon: '⚙️' },
   ]
 
   return (

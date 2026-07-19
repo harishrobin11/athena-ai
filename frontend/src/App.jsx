@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard'
 import NotificationBell from './components/NotificationBell'
 import SecurityDashboard from './components/SecurityDashboard'
 import PerformanceDashboard from './components/PerformanceDashboard'
+import SettingsPage from './components/SettingsPage'
 
 function App() {
   const [activeView, setActiveView] = useState('dashboard')
@@ -28,6 +29,7 @@ function App() {
             {activeView === 'integration' && 'Enterprise API Hub'}
             {activeView === 'security'   && '🔐 Enterprise Security'}
             {activeView === 'performance'&& '⚡ Performance & Cache'}
+            {activeView === 'settings'   && '⚙️ Settings'}
           </h1>
           <div className="flex items-center gap-3">
             <NotificationBell />
@@ -41,6 +43,7 @@ function App() {
           {activeView === 'integration' && <IntegrationPanel />}
           {activeView === 'security'   && <SecurityDashboard />}
           {activeView === 'performance'&& <PerformanceDashboard />}
+          {activeView === 'settings'   && <SettingsPage />}
         </div>
       </main>
     </div>
