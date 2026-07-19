@@ -24,6 +24,7 @@ from app.api.workspaces import router as workspace_router
 from app.api.billing import router as billing_router
 from app.api.notifications import router as notifications_router
 from app.api.cache import router as cache_router
+from app.api.security import router as security_router
 from fastapi_limiter import FastAPILimiter
 from app.db.redis import redis_manager
 from contextlib import asynccontextmanager
@@ -152,6 +153,9 @@ app.include_router(notifications_router)
 
 # 7. Mount Cache Management (Sprint 54)
 app.include_router(cache_router)
+
+# 8. Mount Enterprise Security (Sprint 55)
+app.include_router(security_router)
 
 if __name__ == "__main__":
     import uvicorn

@@ -708,12 +708,11 @@ Streaming
 
 ## Sprint 55
 
-Enterprise Security
-Azure Entra ID
-SSO
-Audit Logs
-Secrets Management
-Compliance
+Enterprise Security (Completed)
+Azure Entra ID / OIDC SSO
+Tamper-Evident Audit Logs (HMAC-SHA256)
+Secrets Management (Key Vault + env fallback)
+Compliance Report API
 
 ---
 
