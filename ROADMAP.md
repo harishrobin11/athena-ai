@@ -218,7 +218,7 @@ Features
 * Department Search
 
 Status
-🟡
+✅ Completed
 
 ---
 
