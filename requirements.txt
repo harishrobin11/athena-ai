@@ -137,6 +137,7 @@ prometheus-fastapi-instrumentator==7.0.0
 duckduckgo-search
 azure-storage-blob
 langchain-openai
+langchain-huggingface
 azure-search-documents
 redis
 fastapi-limiter==0.1.6

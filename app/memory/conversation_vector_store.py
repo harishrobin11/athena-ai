@@ -1,4 +1,3 @@
-from langchain_chroma import Chroma
 from app.rag.embedder import EmbeddingModel
 from langchain_core.documents import Document
 import uuid
@@ -29,6 +28,10 @@ class ConversationVectorStore:
             except ImportError:
                 print("azure-search-documents missing, falling back to Chroma")
 
+        try:
+            from langchain_chroma import Chroma
+        except ImportError:
+            from langchain_community.vectorstores import Chroma
         self.db = Chroma(
             persist_directory=persist_directory,
             embedding_function=self.embedding,
