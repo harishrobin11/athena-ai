@@ -12,7 +12,7 @@ build==1.5.0
 certifi==2026.6.17
 charset-normalizer==3.4.7
 chromadb==1.0.20
-langchain-chroma
+langchain-chroma==0.1.4
 click==8.4.1
 click-default-group==1.2.4
 coloredlogs==15.0.1

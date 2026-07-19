@@ -1,6 +1,5 @@
 import math
 from typing import List, Dict, Any, Optional
-from langchain_chroma import Chroma
 from app.rag.embedder import EmbeddingModel
 
 class VectorStore:
@@ -37,6 +36,10 @@ class VectorStore:
                 print("azure-search-documents missing, falling back to Chroma")
         
         chroma_collection = f"tenant_{clean_dept}_vault"
+        try:
+            from langchain_chroma import Chroma
+        except ImportError:
+            from langchain_community.vectorstores import Chroma
         return Chroma(
             collection_name=chroma_collection,
             persist_directory=self.persist_directory,
