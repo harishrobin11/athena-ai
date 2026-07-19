@@ -7,6 +7,7 @@ export default function Sidebar({ activeView, setActiveView }) {
     { id: 'workflow',    label: 'Workflow Builder', icon: '⚡' },
     { id: 'integration', label: 'API Hub',          icon: '🔌' },
     { id: 'security',    label: 'Security',         icon: '🔐' },
+    { id: 'performance', label: 'Performance',      icon: '📈' },
   ]
 
   return (

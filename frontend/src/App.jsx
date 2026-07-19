@@ -6,6 +6,7 @@ import IntegrationPanel from './components/IntegrationPanel'
 import Dashboard from './components/Dashboard'
 import NotificationBell from './components/NotificationBell'
 import SecurityDashboard from './components/SecurityDashboard'
+import PerformanceDashboard from './components/PerformanceDashboard'
 
 function App() {
   const [activeView, setActiveView] = useState('dashboard')
@@ -21,11 +22,12 @@ function App() {
       <main className="flex-1 flex flex-col h-full bg-transparent border-l border-white/5 overflow-hidden relative z-10">
         <header className="h-20 flex items-center justify-between px-8 glass-header shrink-0">
           <h1 className="text-2xl font-bold glow-text">
-            {activeView === 'dashboard'  && 'Analytics Dashboard'}
-            {activeView === 'chat'       && 'Athena Intelligence'}
-            {activeView === 'workflow'   && 'Workflow Builder'}
-            {activeView === 'integration'&& 'Enterprise API Hub'}
+            {activeView === 'dashboard'   && 'Analytics Dashboard'}
+            {activeView === 'chat'        && 'Athena Intelligence'}
+            {activeView === 'workflow'    && 'Workflow Builder'}
+            {activeView === 'integration' && 'Enterprise API Hub'}
             {activeView === 'security'   && '🔐 Enterprise Security'}
+            {activeView === 'performance'&& '⚡ Performance & Cache'}
           </h1>
           <div className="flex items-center gap-3">
             <NotificationBell />
@@ -38,6 +40,7 @@ function App() {
           {activeView === 'workflow'    && <WorkflowBuilder />}
           {activeView === 'integration' && <IntegrationPanel />}
           {activeView === 'security'   && <SecurityDashboard />}
+          {activeView === 'performance'&& <PerformanceDashboard />}
         </div>
       </main>
     </div>
