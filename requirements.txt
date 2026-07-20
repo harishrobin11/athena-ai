@@ -136,7 +136,7 @@ zstandard==0.25.0
 prometheus-fastapi-instrumentator==7.0.0
 duckduckgo-search
 azure-storage-blob
-langchain-openai==0.2.16
+langchain-openai==0.2.14
 langchain-huggingface==0.1.2
 azure-search-documents
 redis
