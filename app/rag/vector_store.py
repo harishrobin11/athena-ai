@@ -1,15 +1,17 @@
 import math
 from typing import List, Dict, Any, Optional
-from app.rag.embedder import EmbeddingModel
 
 class VectorStore:
     def __init__(self, persist_directory: str = "data/chroma"):
-        """
-        Initializes the shared base configuration and embedding engine.
-        Multi-tenant isolation happens dynamically per collection layout.
-        """
-        self.embedding = EmbeddingModel().get_model()
+        self._embedding = None  # lazy-loaded on first use
         self.persist_directory = persist_directory
+
+    @property
+    def embedding(self):
+        if self._embedding is None:
+            from app.rag.embedder import EmbeddingModel
+            self._embedding = EmbeddingModel().get_model()
+        return self._embedding
 
     def _get_tenant_db(self, dept_id: str) -> Any:
         """

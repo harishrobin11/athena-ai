@@ -9,6 +9,8 @@ services:
     restart: always
     environment:
       - REDIS_URL=redis://redis:6379
+      - ANONYMIZED_TELEMETRY=false
+      - CHROMA_SERVER_NOFILE=65535
       # Add other DB vars here as needed
     networks:
       - athena_network
