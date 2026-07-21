@@ -12,7 +12,12 @@ class RedisClient:
     async def connect(self):
         """Initialize the Redis connection pool."""
         try:
-            self.client = redis.from_url(self.url, socket_connect_timeout=2.0, socket_timeout=2.0)
+            self.client = redis.from_url(
+                self.url,
+                socket_connect_timeout=1.0,
+                socket_timeout=1.0,
+                retry_on_timeout=False
+            )
             await self.client.ping()
             print("Connected to Redis")
         except Exception as e:

@@ -28,8 +28,9 @@ async def agent_chat(
 
     async def event_generator():
         try:
+            config = {"configurable": {"thread_id": "default_thread"}}
             # Run the compiled multi-agent asynchronous graph loop stream
-            async for chunk in compiled_graph.astream(initial_state, stream_mode="updates"):
+            async for chunk in compiled_graph.astream(initial_state, config=config, stream_mode="updates"):
                 for node_name, node_output in chunk.items():
                     if "messages" in node_output and node_output["messages"]:
                         last_msg = node_output["messages"][-1]

@@ -112,10 +112,9 @@ class MessagesResponse(BaseModel):
 # MULTI-TENANT AUTHENTICATION SCHEMAS (UPDATED FOR RBAC)
 # =====================================================================
 class RegisterRequest(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50, pattern="^[a-zA-Z0-9_-]+$")
+    username: str = Field(..., min_length=2, max_length=50, pattern="^[a-zA-Z0-9_-]+$")
     email: EmailStr
-    password: str = Field(..., min_length=8, max_length=100, description="Password must be at least 8 characters")
-    # NEW: Allows setting a team context during onboarding (defaults to PROCUREMENT)
+    password: str = Field(..., min_length=3, max_length=100, description="Password must be at least 3 characters")
     department: DepartmentRole = DepartmentRole.PROCUREMENT
 
 class RegisterResponse(BaseModel):

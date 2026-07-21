@@ -18,8 +18,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab =
     setSuccess('')
     setLoading(true)
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long')
+    if (password.length < 3) {
+      setError('Password must be at least 3 characters long')
       setLoading(false)
       return
     }
@@ -38,7 +38,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab =
 
       const data = await res.json()
       if (!res.ok) {
-        throw new Error(data.detail || 'Registration failed')
+        let errMessage = 'Registration failed'
+        if (Array.isArray(data.detail)) {
+          errMessage = data.detail.map(d => `${d.loc ? d.loc.join('.') : ''}: ${d.msg}`).join(', ')
+        } else if (typeof data.detail === 'string') {
+          errMessage = data.detail
+        }
+        throw new Error(errMessage)
       }
 
       setSuccess('Account registered successfully! Logging in...')

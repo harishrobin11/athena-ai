@@ -36,6 +36,12 @@ from app.core.logger import logger
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.memory.database import init_db
+    try:
+        init_db()
+        logger.info("Database tables initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database tables: {e}")
     await redis_manager.connect()
     client = redis_manager.get_client()
     if client and FastAPILimiter is not None:
