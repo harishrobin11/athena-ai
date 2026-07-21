@@ -99,6 +99,24 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
         use_hybrid=True
     )
     
+    # Fallback 1: If strict user_id/filename metadata filter yields 0 docs, try general retrieval
+    if not docs:
+        docs = retriever.retrieve(
+            query=user_query,
+            dept_id=state.get("department_boundary", "GENERAL"),
+            top_k=5,
+            filter_metadata=None,
+            use_hybrid=True
+        )
+
+    # Fallback 2: If vector store still returns 0 docs and selected_docs are provided, execute document layout extraction directly
+    if not docs and selected_docs:
+        from app.tools.registry import execute_tool
+        doc_analysis = execute_tool("analyze_document_layout", selected_docs[0])
+        if doc_analysis and not "could not be resolved" in doc_analysis:
+            from langchain_core.documents import Document
+            docs = [Document(page_content=doc_analysis, metadata={"filename": selected_docs[0]})]
+    
     # Sprint 14: Conversation Intelligence - Fetch & Rank Memory
     past_conversations = []
     try:
@@ -366,12 +384,11 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
         memories_str = "\n[Recall of Facts & Profile From Past Chats]:\n" + "\n".join(combined_m)
     
     sys_msg = SystemMessage(
-        content=f"You are Athena AI, an Enterprise Knowledge Assistant for the {dept} department. The current date and time is {current_time}. {memories_str}\n\nIf the user says hello or greets you casually without asking a specific question, respond with a warm greeting and ask how you can help them navigate their workspace or ML classifiers today. If the user is asking about a document, report, or specific corporate data, synthesize a helpful response strictly based on the provided worker context in the conversation history, and do NOT hallucinate. If the user asks a general knowledge question (like coding, science, definitions, or today's date/time/memories), you may use your pre-trained knowledge along with the current time and recalled memories context to answer them fully and helpfully."
+        content=f"You are Athena AI, an Enterprise Knowledge Assistant for the {dept} department. The current date and time is {current_time}. {memories_str}\n\nIf the user greets you casually, reply with a warm, natural greeting and ask how you can help them navigate their workspace or ML classifiers today. Synthesize answers directly and helpfully. Do NOT mention internal system tags, missing worker contexts, or debug labels in your response."
     )
     
-    # Inject a final prompt to force the LLM to reply, 
-    # since the last message in state is likely an AIMessage (Worker Result)
-    final_prompt = HumanMessage(content="Please provide the final synthesized answer to my original query. If my query was about a document, rely ONLY on the [Worker Result] context above. Otherwise, answer natively using your general knowledge.")
+    # Inject a final prompt instructing clean output without robotic meta-commentary
+    final_prompt = HumanMessage(content="Please provide a clear, helpful, and natural response to my query using the conversation context above if relevant. Answer directly without citing system internals, missing results, or internal worker tags.")
     
     messages = [sys_msg] + state.get("messages", []) + [final_prompt]
     

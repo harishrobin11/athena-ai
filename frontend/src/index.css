@@ -17,3 +17,130 @@
     @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 drop-shadow-[0_0_15px_rgba(129,140,248,0.3)];
   }
 }
+
+/* Copilot-Style Rotating & Glittering Animation Styles */
+@keyframes rotate-conic {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer-glitter {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes float-sparkle {
+  0% {
+    transform: translateY(0px) scale(0.6);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-24px) scale(1.3);
+    opacity: 0;
+  }
+}
+
+.copilot-prompt-container {
+  position: relative;
+  border-radius: 1.25rem;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(16px);
+  padding: 2px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.copilot-prompt-container::before {
+  content: '';
+  position: absolute;
+  top: -75%;
+  left: -75%;
+  width: 250%;
+  height: 250%;
+  background: conic-gradient(
+    from 180deg,
+    transparent 0%,
+    rgba(99, 102, 241, 0.3) 25%,
+    rgba(168, 85, 247, 0.7) 50%,
+    rgba(236, 72, 153, 0.9) 75%,
+    transparent 100%
+  );
+  animation: rotate-conic 8s linear infinite;
+  opacity: 0.35;
+  z-index: 0;
+  transition: opacity 0.4s ease, animation-duration 0.4s ease;
+}
+
+.copilot-prompt-container:focus-within::before {
+  opacity: 0.85;
+  animation-duration: 4s;
+}
+
+.copilot-prompt-container.searching::before {
+  opacity: 1;
+  animation-duration: 1.8s;
+  background: conic-gradient(
+    from 180deg,
+    #3b82f6 0%,
+    #8b5cf6 25%,
+    #ec4899 50%,
+    #06b6d4 75%,
+    #3b82f6 100%
+  );
+  filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.6));
+}
+
+.copilot-prompt-inner {
+  position: relative;
+  z-index: 2;
+  border-radius: 1.15rem;
+  background: rgba(15, 23, 42, 0.95);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.copilot-prompt-container.searching .copilot-prompt-inner {
+  background: linear-gradient(
+    90deg,
+    rgba(15, 23, 42, 0.95) 0%,
+    rgba(30, 41, 59, 0.85) 30%,
+    rgba(79, 70, 229, 0.25) 50%,
+    rgba(30, 41, 59, 0.85) 70%,
+    rgba(15, 23, 42, 0.95) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-glitter 2.5s infinite linear;
+}
+
+.copilot-sparkle-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  overflow: hidden;
+}
+
+.copilot-sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 8px #ec4899, 0 0 16px #8b5cf6;
+  animation: float-sparkle 1.8s infinite ease-out;
+}
+

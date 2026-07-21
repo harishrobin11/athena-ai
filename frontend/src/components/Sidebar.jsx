@@ -4,6 +4,7 @@ export default function Sidebar({ activeView, setActiveView, user, onOpenAuth })
   const navItems = [
     { id: 'dashboard',   label: 'Dashboard',       icon: '📊' },
     { id: 'chat',        label: 'Chat Interface',   icon: '💬' },
+    { id: 'classifier',  label: 'ML Classifier',   icon: '🧠' },
     { id: 'workflow',    label: 'Workflow Builder', icon: '⚡' },
     { id: 'integration', label: 'API Hub',          icon: '🔌' },
     { id: 'security',    label: 'Security',         icon: '🔐' },

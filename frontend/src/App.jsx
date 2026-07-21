@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Sidebar from './components/Sidebar'
 import ChatInterface from './components/ChatInterface'
+import ClassifierPanel from './components/ClassifierPanel'
 import WorkflowBuilder from './components/WorkflowBuilder'
 import IntegrationPanel from './components/IntegrationPanel'
 import Dashboard from './components/Dashboard'
@@ -46,6 +47,7 @@ function App() {
           <h1 className="text-2xl font-bold glow-text">
             {activeView === 'dashboard'   && 'Analytics Dashboard'}
             {activeView === 'chat'        && 'Athena Intelligence'}
+            {activeView === 'classifier'  && '🧠 ML Expense Classifier'}
             {activeView === 'workflow'    && 'Workflow Builder'}
             {activeView === 'integration' && 'Enterprise API Hub'}
             {activeView === 'security'   && '🔐 Enterprise Security'}
@@ -67,6 +69,7 @@ function App() {
         <div className="flex-1 overflow-auto p-8 scroll-smooth relative z-10">
           {activeView === 'dashboard'   && <Dashboard />}
           {activeView === 'chat'        && <ChatInterface user={user} />}
+          {activeView === 'classifier'  && <ClassifierPanel />}
           {activeView === 'workflow'    && <WorkflowBuilder />}
           {activeView === 'integration' && <IntegrationPanel />}
           {activeView === 'security'   && <SecurityDashboard />}
