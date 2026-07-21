@@ -1,11 +1,25 @@
+import os
 import mlflow
 import time
 from functools import wraps
 from typing import Any, Callable
 
-# Initialize MLflow tracking to local directory
-mlflow.set_tracking_uri("sqlite:///mlruns.db")
-mlflow.set_experiment("Athena_LLMOps")
+# Initialize MLflow tracking to local directory with recovery
+try:
+    mlflow.set_tracking_uri("sqlite:///mlruns.db")
+    mlflow.set_experiment("Athena_LLMOps")
+except Exception as e:
+    print(f"[MLFLOW RECOVERY] Resetting corrupted mlruns.db: {e}")
+    if os.path.exists("mlruns.db"):
+        try:
+            os.remove("mlruns.db")
+        except Exception:
+            pass
+    try:
+        mlflow.set_tracking_uri("sqlite:///mlruns.db")
+        mlflow.set_experiment("Athena_LLMOps")
+    except Exception as ex:
+        print(f"[MLFLOW LOG] Disabling MLflow tracking: {ex}")
 
 def track_prompt_execution(prompt_version: str, task_name: str):
     """
