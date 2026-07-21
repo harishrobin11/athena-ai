@@ -537,7 +537,7 @@ def upload(
                     tmp_path = tmp_txt.name
                     
         # Ingest from the temporary local file path
-        chunks = document_service.ingest(tmp_path, user_id=user_id)
+        chunks = document_service.ingest(tmp_path, user_id=user_id, original_filename=file.filename)
     finally:
         os.unlink(tmp_path) # Clean up temp file
 

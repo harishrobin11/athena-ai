@@ -16,14 +16,16 @@ class DocumentService:
     def ingest(
         self,
         pdf_path: str,
-        user_id: int
+        user_id: int,
+        original_filename: str = None,
+        dept_id: str = "GENERAL"
     ):
         # Load the PDF
         documents = load_pdf(pdf_path)
 
         # Split into chunks
         chunks = self.splitter.split(documents)
-        filename = Path(pdf_path).name
+        filename = original_filename or Path(pdf_path).name
 
         for chunk in chunks:
             chunk.metadata["user_id"] = user_id
@@ -33,7 +35,7 @@ class DocumentService:
         store = self._get_store()
         
         # Store the chunks
-        store.add_documents(chunks)
+        store.add_documents(chunks, dept_id=dept_id)
 
         return len(chunks)
     
@@ -51,7 +53,8 @@ class DocumentService:
     def delete_document(
         self,
         filename: str,
-        user_id: int
+        user_id: int,
+        dept_id: str = "GENERAL"
     ):
         file_path = (
             Path("documents")
@@ -60,19 +63,16 @@ class DocumentService:
         )
 
         if file_path.exists():
-            
-            store = self._get_store()
-
-            store.delete_document_embeddings(
-                filename=filename,
-                user_id=user_id,
-            )
-
             file_path.unlink()
 
-            return True
+        store = self._get_store()
+        store.delete_document_embeddings(
+            filename=filename,
+            user_id=user_id,
+            dept_id=dept_id,
+        )
 
-        return False
+        return True
     
     def document_count(self):
         

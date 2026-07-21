@@ -48,7 +48,7 @@ class VectorStore:
             embedding_function=self.embedding,
         )
 
-    def add_documents(self, documents: List[Any], dept_id: str):
+    def add_documents(self, documents: List[Any], dept_id: str = "GENERAL"):
         """Adds documents into the isolated tenant collection space."""
         db = self._get_tenant_db(dept_id)
         db.add_documents(documents)
@@ -56,7 +56,7 @@ class VectorStore:
     def similarity_search(
         self,
         query: str,
-        dept_id: str,
+        dept_id: str = "GENERAL",
         k: int = 3,
         filter_metadata: Optional[Dict[str, Any]] = None,
     ):
@@ -68,7 +68,7 @@ class VectorStore:
             filter=filter_metadata,
         )
 
-    def debug_collection(self, dept_id: str) -> List[Dict[str, Any]]:
+    def debug_collection(self, dept_id: str = "GENERAL") -> List[Dict[str, Any]]:
         """Inspects metadata tags for the top 5 records within a tenant collection."""
         db = self._get_tenant_db(dept_id)
         if hasattr(db, "_collection"):
@@ -76,22 +76,19 @@ class VectorStore:
             return result["metadatas"][:5]
         return []
 
-    def delete_document_embeddings(self, filename: str, user_id: str, dept_id: str):
+    def delete_document_embeddings(self, filename: str, user_id: Any = None, dept_id: str = "GENERAL"):
         """Purges document embeddings matching structural boundaries within the tenant collection."""
         db = self._get_tenant_db(dept_id)
         if hasattr(db, "_collection"):
-            db._collection.delete(
-                where={
-                    "$and": [
-                        {"filename": filename},
-                        {"user_id": user_id},
-                    ]
-                }
-            )
+            try:
+                where_clause = {"filename": filename}
+                db._collection.delete(where=where_clause)
+            except Exception as e:
+                print(f"Error deleting embeddings for {filename}: {e}")
         else:
             print("Deletion for AzureSearch backend not implemented via Chroma API yet.")
 
-    def count_embeddings(self, dept_id: str) -> int:
+    def count_embeddings(self, dept_id: str = "GENERAL") -> int:
         """Counts total active vector records registered within a tenant's vault."""
         db = self._get_tenant_db(dept_id)
         if hasattr(db, "_collection"):
@@ -102,7 +99,7 @@ class VectorStore:
     def keyword_search(
         self,
         query: str,
-        dept_id: str,
+        dept_id: str = "GENERAL",
         limit: int = 10,
         filter_metadata: Optional[Dict[str, Any]] = None,
     ):

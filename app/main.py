@@ -133,7 +133,7 @@ app.include_router(vault_router, prefix="/api/v1", tags=["Vault"])
 app.include_router(metrics_router, prefix="/api/v1", tags=["Metrics"])
 
 app.include_router(api_router, prefix="/api", tags=["core"])
-app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
+app.include_router(admin_router, prefix="/api", tags=["admin"])
 app.include_router(knowledge_router, prefix="/api/knowledge", tags=["knowledge"])
 app.include_router(marketplace_router, prefix="/api/marketplace", tags=["marketplace"])
 

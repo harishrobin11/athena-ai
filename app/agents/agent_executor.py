@@ -217,7 +217,8 @@ def run_agent_stream(
                 for turn in history:
                     messages.append({"role": turn.get("role"), "content": turn.get("content")})
             messages.append({"role": "user", "content": user_query})
-            return stream_llm(messages)
+            yield from stream_llm(messages)
+            return
         elif route == "memory":
             plan = [{"tool": "search_memory", "input": user_query}]
         elif route == "documents":
@@ -234,7 +235,8 @@ def run_agent_stream(
             for turn in history:
                 messages.append({"role": turn.get("role"), "content": turn.get("content")})
         messages.append({"role": "user", "content": user_query})
-        return stream_llm(messages)
+        yield from stream_llm(messages)
+        return
 
     # Execute designated planning tools
     tool_context = {
