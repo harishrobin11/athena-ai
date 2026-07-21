@@ -13,7 +13,9 @@ services:
       - REDIS_URL=redis://redis:6379
       - ANONYMIZED_TELEMETRY=false
       - CHROMA_SERVER_NOFILE=65535
-      # Add other DB vars here as needed
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./storage:/app/storage
       - ./data:/app/data
@@ -33,6 +35,9 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: celery -A app.core.celery_app worker --loglevel=info
     networks:
       - athena_network

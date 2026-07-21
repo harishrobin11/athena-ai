@@ -28,7 +28,8 @@ if _azure_api_key and _azure_endpoint:
         streaming=True
     )
 else:
-    _ollama_host = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
+    _default_ollama = "http://host.docker.internal:11434" if os.path.exists("/.dockerenv") else "http://127.0.0.1:11434"
+    _ollama_host = os.getenv("OLLAMA_HOST", _default_ollama)
     azure_llm = ChatOpenAI(
         model=_model,
         api_key=_api_key,
@@ -91,9 +92,21 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
         
     filter_metadata = {"user_id": filter_user_id}
     
+    import os
+    import glob
+    from app.rag.loader import load_pdf
+    from langchain_core.documents import Document
+
     selected_docs = state.get("context_metadata", {}).get("selected_documents", [])
+    
+    # Auto-discover uploaded document if not explicitly passed
+    if not selected_docs:
+        all_pdfs = glob.glob(os.path.join(os.getcwd(), "storage", "documents", "**", "*.pdf"), recursive=True)
+        if all_pdfs:
+            latest_pdf = max(all_pdfs, key=os.path.getmtime)
+            selected_docs = [os.path.basename(latest_pdf)]
+
     if selected_docs:
-        # Wrap multiple conditions in $and to satisfy Chroma requirements
         filter_metadata = {
             "$and": [
                 {"user_id": filter_user_id},
@@ -109,7 +122,7 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
         use_hybrid=True
     )
     
-    # Fallback 1: If strict user_id/filename metadata filter yields 0 docs, try general retrieval
+    # Fallback 1: Try general vector retrieval without user_id filter
     if not docs:
         docs = retriever.retrieve(
             query=user_query,
@@ -119,21 +132,14 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
             use_hybrid=True
         )
 
-    # Fallback 2: If vector store still returns 0 docs and selected_docs are provided, execute document layout extraction directly
+    # Fallback 2: Direct multi-path disk search & full-text extraction
     if not docs and selected_docs:
-        from app.tools.registry import execute_tool
-        doc_analysis = execute_tool("analyze_document_layout", selected_docs[0])
-        if doc_analysis and not "could not be resolved" in doc_analysis:
-            from langchain_core.documents import Document
-            docs = [Document(page_content=doc_analysis, metadata={"filename": selected_docs[0]})]
-
-    # Fallback 3: Direct disk load of selected document if ChromaDB returns 0 docs
-    if not docs and selected_docs:
-        import os
-        from app.rag.loader import load_pdf
+        target_name = selected_docs[0]
         possible_paths = [
-            os.path.join(os.getcwd(), "storage", "documents", f"user_{filter_user_id}", selected_docs[0]),
-            os.path.join(os.getcwd(), "storage", "documents", selected_docs[0])
+            os.path.join(os.getcwd(), "storage", "documents", f"user_{filter_user_id}", target_name),
+            os.path.join(os.getcwd(), "storage", "documents", target_name),
+            os.path.join(os.getcwd(), "storage", "documents", "user_1", target_name),
+            os.path.join(os.getcwd(), "storage", "documents", "user_None", target_name),
         ]
         for p in possible_paths:
             if os.path.exists(p):
@@ -141,9 +147,17 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
                     loaded_docs = load_pdf(p)
                     if loaded_docs:
                         docs = loaded_docs
+                        print(f"[RAG WORKER] Successfully loaded {len(docs)} pages from disk file: {p}")
                         break
                 except Exception as ex:
-                    print(f"[RAG WORKER] Direct file load failed: {ex}")
+                    print(f"[RAG WORKER] Direct file load failed for {p}: {ex}")
+
+    # Fallback 3: Execute Document AI Tool Layout Parser
+    if not docs and selected_docs:
+        from app.tools.registry import execute_tool
+        doc_analysis = execute_tool("analyze_document_layout", selected_docs[0])
+        if doc_analysis and "could not be resolved" not in doc_analysis:
+            docs = [Document(page_content=doc_analysis, metadata={"filename": selected_docs[0]})]
 
     
     # Sprint 14: Conversation Intelligence - Fetch & Rank Memory
