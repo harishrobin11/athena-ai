@@ -3,6 +3,9 @@ from app.memory.conversation_vector_store import (
 )
 
 
+from .registry import register_tool
+
+@register_tool("search_conversations")
 def search_conversations_tool(
     tool_input,
     context,

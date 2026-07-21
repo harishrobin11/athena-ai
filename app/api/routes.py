@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 
 # Authentication & Security Infrastructure (Circular-Dependency Proof)
 from app.auth.security import hash_password, verify_password
-from app.auth.jwt_handler import create_access_token
+from app.auth.jwt_handler import create_access_token, create_refresh_token, decode_refresh_token
 from app.auth.dependencies import get_current_user, DepartmentGuard
 from app.db.database import get_db
 from app.api.models import (
@@ -29,7 +29,9 @@ from app.api.models import (
     LoginResponse,
     RegisterRequest,
     RegisterResponse,
-    DepartmentRole
+    DepartmentRole,
+    RefreshRequest,
+    RefreshResponse
 )
 
 # Core Chat & RAG Component Engines
@@ -150,12 +152,42 @@ def login(request: LoginRequest):
     # Temporary hardcode: grant 'admin' role if username is admin OR department is ADMIN
     granted_role = "admin" if user[1].lower() == "admin" or user_department == "ADMIN" else "analyst"
     
-    token = create_access_token({
+    token_data = {
         "user_id": user[0], 
         "username": user[1], 
         "department": user_department
-    })
-    return LoginResponse(access_token=token, token_type="bearer", department=user_department, role=granted_role)
+    }
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token(token_data)
+    
+    return LoginResponse(
+        access_token=access_token, 
+        refresh_token=refresh_token,
+        token_type="bearer", 
+        department=user_department, 
+        role=granted_role
+    )
+
+@router.post("/refresh", response_model=RefreshResponse)
+def refresh_token(request: RefreshRequest):
+    payload = decode_refresh_token(request.refresh_token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+        
+    token_data = {
+        "user_id": payload.get("user_id"),
+        "username": payload.get("username"),
+        "department": payload.get("department")
+    }
+    
+    new_access_token = create_access_token(token_data)
+    new_refresh_token = create_refresh_token(token_data)
+    
+    return RefreshResponse(
+        access_token=new_access_token,
+        refresh_token=new_refresh_token,
+        token_type="bearer"
+    )
 
 
 # =====================================================================
@@ -486,6 +518,20 @@ def upload(
     db=Depends(get_db)
 ):
     user_id = current_user["user_id"]
+    
+    # ─── Upload Format Validation (Sprint 3) ───
+    filename_lower = file.filename.lower()
+    is_pdf = filename_lower.endswith(".pdf")
+    is_image = (
+        (file.content_type in ["image/jpeg", "image/png", "image/tiff"]) or 
+        filename_lower.endswith((".jpg", ".jpeg", ".png", ".tiff"))
+    )
+    if not (is_pdf or is_image):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Invalid file format. Only PDF and image uploads are supported."
+        )
+
     if workspace_id:
         from app.auth.permissions import check_workspace_permission
         from app.db.models import Workspace, Organization, Document, Tag

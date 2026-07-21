@@ -16,8 +16,8 @@ export default function Sidebar({ activeView, setActiveView, user, onOpenAuth })
   const userRole = user?.role ? `${user.department} • ${user.role}` : 'System Administrator'
 
   return (
-    <div className="w-72 h-full bg-[#0B0F19]/80 backdrop-blur-2xl flex flex-col p-5 shrink-0 relative z-20">
-      <div className="flex items-center gap-4 mb-10 px-2 py-4 border-b border-white/5">
+    <div className="w-72 h-full bg-[#0B0F19]/80 backdrop-blur-2xl flex flex-col p-4 pb-4 shrink-0 relative z-20">
+      <div className="flex items-center gap-4 mb-6 px-2 py-3 border-b border-white/5">
         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]">
           <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
         </div>
@@ -27,12 +27,12 @@ export default function Sidebar({ activeView, setActiveView, user, onOpenAuth })
         </div>
       </div>
       
-      <nav className="flex-1 space-y-2">
+      <nav className="flex-1 space-y-1.5 overflow-y-auto pr-1">
         {navItems.map(item => (
           <button
             key={item.id}
             onClick={() => setActiveView(item.id)}
-            className={`w-full flex items-center gap-4 px-5 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
+            className={`w-full flex items-center gap-4 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
               activeView === item.id 
                 ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.15)]' 
                 : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border border-transparent'

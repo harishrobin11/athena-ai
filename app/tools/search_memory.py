@@ -1,6 +1,9 @@
 from app.memory.store import memory_collection
 
 
+from .registry import register_tool
+
+@register_tool("search_memory")
 def search_memory(
     tool_input: str,
     context: dict,

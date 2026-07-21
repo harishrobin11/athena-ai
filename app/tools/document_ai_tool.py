@@ -4,6 +4,9 @@ from app.document_ai.processor import DocumentIntelligenceProcessor
 # Initialize the structural engine processor
 processor = DocumentIntelligenceProcessor()
 
+from .registry import register_tool
+
+@register_tool("analyze_document_layout")
 def analyze_document_layout(tool_input: str, context: dict = None) -> str:
     """
     Parses a local PDF document's geometric layout and extracts structured table data.

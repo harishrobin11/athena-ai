@@ -5,6 +5,9 @@ Module: app.tools.api_tool
 import json
 from typing import Dict, Any, Optional
 
+from .registry import register_tool
+
+@register_tool("execute_api")
 def execute_api_call(tool_input: str, context: Optional[Dict[str, Any]] = None) -> str:
     """
     Mocks executing a REST API call.

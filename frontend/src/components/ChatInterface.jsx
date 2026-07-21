@@ -44,6 +44,7 @@ export default function ChatInterface() {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let accumText = ''
+      let currentStatus = 'Processing request...'
 
       while (true) {
         const { value, done } = await reader.read()
@@ -54,10 +55,16 @@ export default function ChatInterface() {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.replace('data: ', ''))
-              if (data.content) {
+              if (data.event_type === 'token') {
                 accumText += data.content + ' '
                 setMessages(prev => prev.map(msg => 
                   msg.id === assistantId ? { ...msg, content: accumText.trim() } : msg
+                ))
+              } else if (data.event_type === 'thought') {
+                const nodeLabel = data.node_name ? data.node_name.replace('_', ' ') : 'agent';
+                currentStatus = `Analyzing (${nodeLabel})...`;
+                setMessages(prev => prev.map(msg => 
+                  msg.id === assistantId && !accumText.trim() ? { ...msg, content: currentStatus } : msg
                 ))
               }
             } catch (e) {

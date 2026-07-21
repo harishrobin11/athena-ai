@@ -1,3 +1,13 @@
+TOOLS = {}
+
+def register_tool(name: str):
+    """Decorator to dynamically register tools into the global registry."""
+    def decorator(func):
+        TOOLS[name] = func
+        return func
+    return decorator
+
+# Import tools to trigger decorator registration
 from .calculator import calculator_tool
 from .document_search import search_documents_tool
 from .conversation_search import search_conversations_tool
@@ -9,26 +19,8 @@ from .sql_tool import execute_sql_query
 from .python_tool import execute_python_code
 from .api_tool import execute_api_call
 from .schedule_tool import schedule_task
-
-
 from .api_hub_tools import slack_tool, jira_tool, salesforce_tool
 
-TOOLS = {
-    "calculator": calculator_tool,
-    "search_documents": search_documents_tool,
-    "search_conversations": search_conversations_tool,
-    "search_memory": search_memory,
-    "analyze_image": analyze_image,
-    "analyze_document_layout": analyze_document_layout,  # Registered for Agent Orchestration
-    "web_search": web_search_tool,
-    "execute_sql": execute_sql_query,
-    "execute_python": execute_python_code,
-    "execute_api": execute_api_call,
-    "schedule_task": schedule_task,
-    "slack_tool": slack_tool,
-    "jira_tool": jira_tool,
-    "salesforce_tool": salesforce_tool,
-}
 
 
 def execute_tool(

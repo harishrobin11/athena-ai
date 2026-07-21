@@ -26,9 +26,11 @@ async def agent_chat(
         "context_metadata": {"dept_id": department, "workspace_id": payload.workspace_id}
     }
 
+    import uuid
     async def event_generator():
         try:
-            config = {"configurable": {"thread_id": "default_thread"}}
+            unique_thread_id = str(uuid.uuid4())
+            config = {"configurable": {"thread_id": unique_thread_id}}
             # Run the compiled multi-agent asynchronous graph loop stream
             async for chunk in compiled_graph.astream(initial_state, config=config, stream_mode="updates"):
                 for node_name, node_output in chunk.items():
@@ -36,16 +38,16 @@ async def agent_chat(
                         last_msg = node_output["messages"][-1]
                         content = getattr(last_msg, "content", str(last_msg))
                         
-                        if "[Thought]" in content:
+                        if node_name == "final_synthesis":
                             payload_dict = AgentStreamPayload(
-                                event_type=AgentEventType.THOUGHT, 
+                                event_type=AgentEventType.TOKEN, 
                                 node_name=node_name, 
-                                content=content.replace('[Thought]:', '').strip()
+                                content=content
                             ).model_dump()
                             yield f"data: {json.dumps(payload_dict)}\n\n"
                         else:
                             payload_dict = AgentStreamPayload(
-                                event_type=AgentEventType.TOKEN, 
+                                event_type=AgentEventType.THOUGHT, 
                                 node_name=node_name, 
                                 content=content
                             ).model_dump()
@@ -55,7 +57,7 @@ async def agent_chat(
                     payload_dict = AgentStreamPayload(
                         event_type=AgentEventType.NODE_END, 
                         node_name=node_name, 
-                        content='Execution task completed successfully.'
+                        content=""
                     ).model_dump()
                     yield f"data: {json.dumps(payload_dict)}\n\n"
 

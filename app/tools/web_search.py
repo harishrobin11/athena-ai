@@ -5,6 +5,9 @@ Module: app.tools.web_search
 from typing import Dict, Any, Optional
 from langchain_community.tools import DuckDuckGoSearchRun
 
+from .registry import register_tool
+
+@register_tool("web_search")
 def web_search_tool(tool_input: str, context: Optional[Dict[str, Any]] = None) -> str:
     """
     Executes a live internet search using DuckDuckGo to retrieve current facts, news, or general knowledge.

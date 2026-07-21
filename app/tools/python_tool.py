@@ -8,6 +8,9 @@ import traceback
 import contextlib
 from typing import Dict, Any, Optional
 
+from .registry import register_tool
+
+@register_tool("execute_python")
 def execute_python_code(tool_input: str, context: Optional[Dict[str, Any]] = None) -> str:
     """
     Executes a snippet of Python code and returns the standard output.

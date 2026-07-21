@@ -32,6 +32,9 @@ def _init_mock_db():
             ]
             conn.execute(text('INSERT INTO sales (department, revenue, quarter) VALUES (:department, :revenue, :quarter)'), sample_data)
 
+from .registry import register_tool
+
+@register_tool("execute_sql")
 def execute_sql_query(tool_input: str, context: Optional[Dict[str, Any]] = None) -> str:
     """
     Executes a raw SQL query against the internal analytics database.

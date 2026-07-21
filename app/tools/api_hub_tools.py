@@ -1,6 +1,8 @@
 import json
 from app.services.integrations.api_hub import api_hub
+from .registry import register_tool
 
+@register_tool("slack_tool")
 def slack_tool(tool_input: str, context: dict = None) -> str:
     """Send a Slack message. Expects JSON: {"channel": "#general", "message": "hello"}"""
     try:
@@ -9,6 +11,7 @@ def slack_tool(tool_input: str, context: dict = None) -> str:
     except Exception as e:
         return f"Error executing Slack tool: {e}"
 
+@register_tool("jira_tool")
 def jira_tool(tool_input: str, context: dict = None) -> str:
     """Create Jira ticket. Expects JSON: {"title": "Issue", "description": "Details", "priority": "High"}"""
     try:
@@ -17,6 +20,7 @@ def jira_tool(tool_input: str, context: dict = None) -> str:
     except Exception as e:
         return f"Error executing Jira tool: {e}"
 
+@register_tool("salesforce_tool")
 def salesforce_tool(tool_input: str, context: dict = None) -> str:
     """Fetch Salesforce account. Expects JSON: {"account_name": "Acme Corp"}"""
     try:

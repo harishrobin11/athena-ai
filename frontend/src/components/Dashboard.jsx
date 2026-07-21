@@ -32,7 +32,8 @@ export default function Dashboard() {
   const [isConnected, setIsConnected] = useState(false)
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/api/v1/metrics/live')
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${window.location.host}/api/v1/metrics/live`)
     
     ws.onopen = () => {
       setIsConnected(true)

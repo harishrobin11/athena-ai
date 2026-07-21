@@ -1,6 +1,7 @@
 from ..rag.retriever import Retriever
+from .registry import register_tool
 
-
+@register_tool("search_documents")
 def search_documents_tool(
     tool_input,
     context,

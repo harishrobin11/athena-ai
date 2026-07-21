@@ -1,3 +1,6 @@
+from .registry import register_tool
+
+@register_tool("calculator")
 def calculator_tool(
     tool_input,
     context,

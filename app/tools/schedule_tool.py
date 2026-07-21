@@ -5,6 +5,9 @@ Module: app.tools.schedule_tool
 import json
 from typing import Dict, Any, Optional
 
+from .registry import register_tool
+
+@register_tool("schedule_task")
 def schedule_task(tool_input: str, context: Optional[Dict[str, Any]] = None) -> str:
     """
     Mocks scheduling a background cron job or delayed task.

@@ -28,10 +28,11 @@ if _azure_api_key and _azure_endpoint:
         streaming=True
     )
 else:
+    _ollama_host = os.getenv("OLLAMA_HOST", "http://host.docker.internal:11434")
     azure_llm = ChatOpenAI(
         model=_model,
         api_key=_api_key,
-        base_url="http://localhost:11434/v1",
+        base_url=f"{_ollama_host}/v1",
         temperature=0,
         streaming=True
     )

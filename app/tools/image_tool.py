@@ -1,6 +1,9 @@
 from ..multimodal.image_service import analyze_image
 
 
+from .registry import register_tool
+
+@register_tool("analyze_image")
 def execute(
     tool_input,
     context,
