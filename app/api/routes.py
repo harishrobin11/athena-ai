@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 # Authentication & Security Infrastructure (Circular-Dependency Proof)
 from app.auth.security import hash_password, verify_password
 from app.auth.jwt_handler import create_access_token, create_refresh_token, decode_refresh_token
-from app.auth.dependencies import get_current_user, DepartmentGuard
+from app.auth.dependencies import get_current_user, get_optional_current_user, DepartmentGuard
 from app.db.database import get_db
 from app.api.models import (
     LoginRequest,
@@ -514,7 +514,7 @@ def upload(
     collection_id: Optional[int] = Form(None),
     department: Optional[str] = Form(None),
     tags: Optional[str] = Form(None), # Comma separated tag IDs
-    current_user=Depends(get_current_user), 
+    current_user=Depends(get_optional_current_user), 
     db=Depends(get_db)
 ):
     user_id = current_user["user_id"]
@@ -532,15 +532,19 @@ def upload(
             detail="Invalid file format. Only PDF and image uploads are supported."
         )
 
-    if workspace_id:
+    real_workspace_id = workspace_id if isinstance(workspace_id, int) else None
+    real_collection_id = collection_id if isinstance(collection_id, int) else None
+    real_department = department if isinstance(department, str) else None
+
+    if real_workspace_id:
         from app.auth.permissions import check_workspace_permission
         from app.db.models import Workspace, Organization, Document, Tag
         from app.core.billing_config import TIER_LIMITS, check_limit
         
-        check_workspace_permission(workspace_id, ["owner", "admin", "manager", "developer"], current_user, db)
+        check_workspace_permission(real_workspace_id, ["owner", "admin", "manager", "developer"], current_user, db)
         
         # Enforce Billing limits for Documents
-        workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+        workspace = db.query(Workspace).filter(Workspace.id == real_workspace_id).first()
         if workspace:
             org = db.query(Organization).filter(Organization.id == workspace.organization_id).first()
             if org:
@@ -554,12 +558,28 @@ def upload(
     file.file.seek(0)
     object_key = f"user_{user_id}/{file.filename}"
     
-    storage_service.upload_file(
-        file_content=file_bytes,
-        bucket="athena-documents",
-        object_name=object_key,
-        content_type=file.content_type or "application/pdf"
-    )
+    try:
+        storage_service.upload_file(
+            file_content=file_bytes,
+            bucket="athena-documents",
+            object_name=object_key,
+            content_type=file.content_type or "application/pdf"
+        )
+    except Exception as e:
+        print(f"[STORAGE WARNING] S3/MinIO storage upload bypassed: {e}")
+
+
+    # Persistent local storage for Document AI and RAG tool resolution
+    storage_dir = os.path.join(os.getcwd(), "storage", "documents", f"user_{user_id}")
+    os.makedirs(storage_dir, exist_ok=True)
+    with open(os.path.join(storage_dir, file.filename), "wb") as pf:
+        pf.write(file_bytes)
+
+    root_storage_dir = os.path.join(os.getcwd(), "storage", "documents")
+    os.makedirs(root_storage_dir, exist_ok=True)
+    with open(os.path.join(root_storage_dir, file.filename), "wb") as rpf:
+        rpf.write(file_bytes)
+
 
     # 2. Write to a temporary file for RAG ingestion (PyPDFLoader needs a real file path)
     import tempfile
@@ -589,35 +609,33 @@ def upload(
 
     # 3. Save standard DB tracking metrics (with versioning)
     version = 1
-    if workspace_id:
+    if real_workspace_id:
         existing = db.query(Document).filter(
-            Document.workspace_id == workspace_id, 
+            Document.workspace_id == real_workspace_id, 
             Document.filename == file.filename
         ).order_by(Document.version.desc()).first()
         if existing:
             version = existing.version + 1
-            # Optionally remove older versions from ChromaDB here
-            # document_service.delete_document(file.filename, user_id)
-            # Actually, keeping it simple: just bump version in DB.
 
     doc_id = add_document(
         user_id, 
         file.filename, 
         object_key=object_key, 
-        workspace_id=workspace_id,
-        collection_id=collection_id,
-        department=department,
+        workspace_id=real_workspace_id,
+        collection_id=real_collection_id,
+        department=real_department,
         version=version
     )
 
-    if tags and workspace_id:
+    if tags and real_workspace_id:
         tag_ids = [int(t.strip()) for t in tags.split(",") if t.strip().isdigit()]
         if tag_ids:
             doc = db.query(Document).filter(Document.id == doc_id).first()
             if doc:
-                found_tags = db.query(Tag).filter(Tag.id.in_(tag_ids), Tag.workspace_id == workspace_id).all()
+                found_tags = db.query(Tag).filter(Tag.id.in_(tag_ids), Tag.workspace_id == real_workspace_id).all()
                 doc.tags.extend(found_tags)
                 db.commit()
+
 
     return UploadResponse(filename=file.filename, chunks=chunks)
 

@@ -31,20 +31,32 @@ export default function ChatInterface() {
 
     try {
       // 1. Upload any attached files to vector storage first
+      const token = localStorage.getItem('token') || localStorage.getItem('accessToken') || ''
+      const uploadHeaders = token ? { 'Authorization': `Bearer ${token}` } : {}
+
       for (const att of userMessage.attachments) {
         if (att.rawFile) {
           try {
+            setMessages(prev => prev.map(msg => 
+              msg.id === assistantId ? { ...msg, content: `Ingesting document "${att.name}" into knowledge vault...` } : msg
+            ))
             const formData = new FormData()
             formData.append('file', att.rawFile)
-            await fetch('/api/upload', {
+            const uploadRes = await fetch('/api/upload', {
               method: 'POST',
+              headers: uploadHeaders,
               body: formData
             })
+            if (!uploadRes.ok) {
+              const errData = await uploadRes.json().catch(() => ({}))
+              console.warn("Auto-upload attachment warning:", errData)
+            }
           } catch (uploadErr) {
             console.warn("Auto-upload attachment error:", uploadErr)
           }
         }
       }
+
 
       const selectedDocs = userMessage.attachments.map(att => att.name)
 
@@ -67,46 +79,56 @@ export default function ChatInterface() {
       const decoder = new TextDecoder()
       let accumText = ''
       let currentStatus = 'Processing request...'
+      let sseBuffer = ''
 
       while (true) {
         const { value, done } = await reader.read()
         if (done) break
-        const chunkStr = decoder.decode(value, { stream: true })
-        const lines = chunkStr.split('\n\n')
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.replace('data: ', ''))
-              if (data.error) {
-                accumText = `Error: ${data.error}`
-                setMessages(prev => prev.map(msg => 
-                  msg.id === assistantId ? { ...msg, content: accumText } : msg
-                ))
-              } else if (data.event_type === 'token') {
-                accumText = data.content
-                setMessages(prev => prev.map(msg => 
-                  msg.id === assistantId ? { ...msg, content: accumText } : msg
-                ))
-              } else if (data.event_type === 'final') {
-                if (data.content && !accumText.trim()) {
+        sseBuffer += decoder.decode(value, { stream: true })
+
+        const rawEvents = sseBuffer.split('\n\n')
+        sseBuffer = rawEvents.pop() || ''
+
+        for (const rawEvent of rawEvents) {
+          const lines = rawEvent.split('\n')
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const jsonStr = line.slice(6).trim()
+                if (!jsonStr) continue
+                const data = JSON.parse(jsonStr)
+                if (data.error) {
+                  accumText = `Error: ${data.error}`
+                  setMessages(prev => prev.map(msg => 
+                    msg.id === assistantId ? { ...msg, content: accumText } : msg
+                  ))
+                } else if (data.event_type === 'token') {
                   accumText = data.content
+                  setMessages(prev => prev.map(msg => 
+                    msg.id === assistantId ? { ...msg, content: accumText } : msg
+                  ))
+                } else if (data.event_type === 'final') {
+                  if (data.content && !accumText.trim()) {
+                    accumText = data.content
+                  }
+                  setMessages(prev => prev.map(msg => 
+                    msg.id === assistantId ? { ...msg, content: accumText || 'Workflow completed successfully.' } : msg
+                  ))
+                } else if (data.event_type === 'thought') {
+                  const nodeLabel = data.node_name ? data.node_name.replace('_', ' ') : 'agent';
+                  currentStatus = `Analyzing (${nodeLabel})...`;
+                  setMessages(prev => prev.map(msg => 
+                    msg.id === assistantId && !accumText.trim() ? { ...msg, content: currentStatus } : msg
+                  ))
                 }
-                setMessages(prev => prev.map(msg => 
-                  msg.id === assistantId ? { ...msg, content: accumText || 'Workflow completed successfully.' } : msg
-                ))
-              } else if (data.event_type === 'thought') {
-                const nodeLabel = data.node_name ? data.node_name.replace('_', ' ') : 'agent';
-                currentStatus = `Analyzing (${nodeLabel})...`;
-                setMessages(prev => prev.map(msg => 
-                  msg.id === assistantId && !accumText.trim() ? { ...msg, content: currentStatus } : msg
-                ))
+              } catch (e) {
+                // Ignore incomplete fragments
               }
-            } catch (e) {
-              // Ignore non-json SSE chunks
             }
           }
         }
       }
+
 
       if (!accumText.trim()) {
         setMessages(prev => prev.map(msg => 

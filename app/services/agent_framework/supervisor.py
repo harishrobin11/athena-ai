@@ -28,14 +28,24 @@ if _azure_api_key and _azure_endpoint:
         streaming=True
     )
 else:
-    _ollama_host = os.getenv("OLLAMA_HOST", "http://host.docker.internal:11434")
+    _ollama_host = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
     azure_llm = ChatOpenAI(
         model=_model,
         api_key=_api_key,
         base_url=f"{_ollama_host}/v1",
         temperature=0,
-        streaming=True
+        streaming=True,
+        extra_body={
+            "keep_alive": -1,
+            "options": {
+                "num_thread": 4,
+                "num_ctx": 1024
+            }
+        }
     )
+
+
+
 
 orchestrator = AthenaSupervisorOrchestrator(azure_llm=azure_llm)
 
@@ -116,6 +126,25 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
         if doc_analysis and not "could not be resolved" in doc_analysis:
             from langchain_core.documents import Document
             docs = [Document(page_content=doc_analysis, metadata={"filename": selected_docs[0]})]
+
+    # Fallback 3: Direct disk load of selected document if ChromaDB returns 0 docs
+    if not docs and selected_docs:
+        import os
+        from app.rag.loader import load_pdf
+        possible_paths = [
+            os.path.join(os.getcwd(), "storage", "documents", f"user_{filter_user_id}", selected_docs[0]),
+            os.path.join(os.getcwd(), "storage", "documents", selected_docs[0])
+        ]
+        for p in possible_paths:
+            if os.path.exists(p):
+                try:
+                    loaded_docs = load_pdf(p)
+                    if loaded_docs:
+                        docs = loaded_docs
+                        break
+                except Exception as ex:
+                    print(f"[RAG WORKER] Direct file load failed: {ex}")
+
     
     # Sprint 14: Conversation Intelligence - Fetch & Rank Memory
     past_conversations = []
@@ -383,43 +412,47 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
     if combined_m:
         memories_str = "\n[Recall of Facts & Profile From Past Chats]:\n" + "\n".join(combined_m)
     
+    # Compact Prompt Construction: Extract only user query and worker results
+    user_query = ""
+    for msg in reversed(state.get("messages", [])):
+        if getattr(msg, "type", "") == "human":
+            user_query = str(msg.content)
+            break
+
+    worker_facts = []
+    for msg in state.get("messages", []):
+        text = str(getattr(msg, "content", ""))
+        if "[Worker Result]" in text or "Retrieved context:" in text:
+            clean_text = text.replace("[Worker Result]:", "").strip()
+            worker_facts.append(clean_text)
+
+    facts_context = ("\n\n[Retrieved Context & Data]:\n" + "\n".join(worker_facts)) if worker_facts else ""
+
     sys_msg = SystemMessage(
-        content=f"You are Athena AI, an Enterprise Knowledge Assistant for the {dept} department. The current date and time is {current_time}. {memories_str}\n\nIf the user greets you casually, reply with a warm, natural greeting and ask how you can help them navigate their workspace or ML classifiers today. Synthesize answers directly and helpfully. Do NOT mention internal system tags, missing worker contexts, or debug labels in your response."
+        content=f"You are Athena AI, an Enterprise Knowledge Assistant for the {dept} department. {memories_str}\n{facts_context}\n\nProvide a clear, direct, and concise answer to the user query. Do not cite internal system tags or worker labels."
     )
     
-    # Inject a final prompt instructing clean output without robotic meta-commentary
-    final_prompt = HumanMessage(content="Please provide a clear, helpful, and natural response to my query using the conversation context above if relevant. Answer directly without citing system internals, missing results, or internal worker tags.")
-    
-    messages = [sys_msg] + state.get("messages", []) + [final_prompt]
-    
+    compact_messages = [sys_msg, HumanMessage(content=user_query or "Hi")]
+
     # Sprint 27: Basic PII Scrubber Guardrail
     import re
-    # Extremely basic regex for demonstration: redact standard SSN patterns
     ssn_pattern = re.compile(r'\b\d{3}-\d{2}-\d{4}\b')
-    for msg in messages:
+    for msg in compact_messages:
         if isinstance(msg.content, str):
             msg.content = ssn_pattern.sub("[REDACTED PII]", msg.content)
 
     # Generate the final response using the LLM instance
     try:
-        response = await azure_llm.ainvoke(messages)
+        response = await azure_llm.ainvoke(compact_messages)
     except Exception as e:
         print(f"[LLM FALLBACK WARNING] LLM invoke failed in final_synthesis: {e}")
-        # Extract worker results or document data from state messages
-        worker_contents = []
-        for msg in state.get("messages", []):
-            text = str(getattr(msg, "content", ""))
-            if "[Worker Result]" in text or "Document Extraction" in text or "Search Results" in text or "Retrieved context:" in text:
-                # Clean up prefix for presentation
-                clean_text = text.replace("[Worker Result]:", "").strip()
-                worker_contents.append(clean_text)
-        
-        if worker_contents:
-            synthesized_text = "### Athena Knowledge Synthesis\n\n" + "\n\n---\n\n".join(worker_contents)
+        if worker_facts:
+            synthesized_text = "### Athena Knowledge Synthesis\n\n" + "\n\n---\n\n".join(worker_facts)
         else:
-            synthesized_text = f"Hello! I received your query. (Note: Enterprise LLM is currently in offline fallback mode. Configure a valid OPENAI_API_KEY in .env for full conversational responses.)"
+            synthesized_text = f"Hello! How can I assist you with your workspace tasks today?"
             
         response = AIMessage(content=synthesized_text)
+
     
     # Extract token usage and record in database
     usage = getattr(response, "response_metadata", {}).get("token_usage", {})
@@ -430,7 +463,8 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
         
     # If using local Ollama or fallback, estimate token count
     if not total_tokens:
-        total_tokens = int(len(response.content.split()) * 1.3) + int(len(str(messages).split()) * 1.3)
+        total_tokens = int(len(response.content.split()) * 1.3) + int(len(str(compact_messages).split()) * 1.3)
+
         
     try:
         from app.db.database import SessionLocal

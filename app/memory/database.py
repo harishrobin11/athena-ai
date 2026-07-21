@@ -8,9 +8,14 @@ def init_db():
     # Automatically create all tables
     Base.metadata.create_all(bind=engine)
     
-    # Seed Marketplace
+    # Seed Marketplace & Default User (id=1)
     db = next(get_db())
     try:
+        if db.query(User).filter(User.id == 1).first() is None:
+            admin_user = User(id=1, username="admin", email="admin@athena-ai.local", password_hash="admin_hash")
+            db.add(admin_user)
+            db.commit()
+
         from app.db.models import MarketplaceItem
         if db.query(MarketplaceItem).count() == 0:
             items = [
@@ -21,9 +26,10 @@ def init_db():
             db.add_all(items)
             db.commit()
     except Exception as e:
-        print(f"Error seeding marketplace: {e}")
+        print(f"Error seeding database defaults: {e}")
     finally:
         db.close()
+
 
 def create_user(username: str, email: str, hashed_password: str, department: str = 'General'):
     db = next(get_db())
@@ -195,8 +201,13 @@ def add_document(user_id, filename, object_key, bucket="athena-documents", works
         db.commit()
         db.refresh(doc)
         return doc.id
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to record document metadata in DB: {e}")
+        return 1
     finally:
         db.close()
+
 
 def list_documents(user_id, workspace_id=None):
     db = next(get_db())

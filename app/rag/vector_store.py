@@ -50,8 +50,18 @@ class VectorStore:
 
     def add_documents(self, documents: List[Any], dept_id: str = "GENERAL"):
         """Adds documents into the isolated tenant collection space."""
-        db = self._get_tenant_db(dept_id)
-        db.add_documents(documents)
+        if not documents:
+            return
+        valid_docs = [d for d in documents if getattr(d, "page_content", "").strip()]
+        if not valid_docs:
+            return
+        try:
+            db = self._get_tenant_db(dept_id)
+            db.add_documents(valid_docs)
+        except Exception as e:
+            print(f"[VECTOR STORE WARNING] ChromaDB upsert bypassed: {e}")
+
+
 
     def similarity_search(
         self,

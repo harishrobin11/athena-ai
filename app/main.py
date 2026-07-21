@@ -42,21 +42,20 @@ async def lifespan(app: FastAPI):
         logger.info("Database tables initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize database tables: {e}")
-    await redis_manager.connect()
-    client = redis_manager.get_client()
-    if client and FastAPILimiter is not None:
-        try:
+    try:
+        await redis_manager.connect()
+        client = redis_manager.get_client()
+        if client and FastAPILimiter is not None:
             await FastAPILimiter.init(client)
             logger.info("FastAPILimiter initialized")
-        except Exception as e:
-            logger.error(f"Failed to initialize FastAPILimiter: {e}")
+    except Exception as e:
+        logger.warning(f"Redis / FastAPILimiter startup bypassed: {e}")
     yield
-    if client and FastAPILimiter is not None:
-        try:
-            await FastAPILimiter.close()
-        except Exception:
-            pass
-    await redis_manager.close()
+    try:
+        await redis_manager.close()
+    except Exception:
+        pass
+
 
 # Instantiate the core FastAPI engine context exactly ONCE
 app = FastAPI(
@@ -81,13 +80,19 @@ app = FastAPI(
     ]
 )
 
-# OpenTelemetry Instrumentation (Sprint 25)
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-FastAPIInstrumentor.instrument_app(app)
+# OpenTelemetry & Prometheus Instrumentation
+try:
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    FastAPIInstrumentor.instrument_app(app)
+except Exception as e:
+    logger.warning(f"OpenTelemetry instrumentation bypassed: {e}")
 
-# Prometheus Instrumentation (Sprints 26-30)
-from prometheus_fastapi_instrumentator import Instrumentator
-Instrumentator().instrument(app).expose(app)
+try:
+    from prometheus_fastapi_instrumentator import Instrumentator
+    Instrumentator().instrument(app).expose(app)
+except Exception as e:
+    logger.warning(f"Prometheus instrumentation bypassed: {e}")
+
 
 # GZip compression for all responses > 1KB (Sprint 54)
 app.add_middleware(GZipMiddleware, minimum_size=1000)

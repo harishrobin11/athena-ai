@@ -51,10 +51,13 @@ def stream_llm(messages: List[Dict[str, Any]]) -> Generator[str, None, None]:
             stream=True,
             keep_alive="30m",
             options={
-                "num_predict": 1024,
+                "num_predict": 512,
                 "temperature": 0.7,
+                "num_thread": 4,
+                "num_ctx": 1024,
             },
         )
+
         
         for chunk in stream:
             # FIX: Safely parse chunk using modern library object attributes

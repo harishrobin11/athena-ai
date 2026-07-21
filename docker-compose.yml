@@ -14,10 +14,14 @@ services:
       - ANONYMIZED_TELEMETRY=false
       - CHROMA_SERVER_NOFILE=65535
       # Add other DB vars here as needed
+    volumes:
+      - ./storage:/app/storage
+      - ./data:/app/data
     networks:
       - athena_network
     depends_on:
       - redis
+
 
   worker:
     build: 

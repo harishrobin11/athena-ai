@@ -32,41 +32,80 @@ export default function Dashboard() {
   const [isConnected, setIsConnected] = useState(false)
 
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.host}/api/v1/metrics/live`)
-    
-    ws.onopen = () => {
-      setIsConnected(true)
-    }
+    let ws = null
+    let reconnectTimeout = null
+    let isUnmounted = false
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      setKpis({
-        activeAgents: data.activeAgents,
-        memoryGb: data.memoryGb,
-        latencyMs: data.latencyMs,
-        totalExecutions: data.totalExecutions
-      })
-
-      // Update time series
-      const now = new Date()
-      const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+    const connect = () => {
+      if (isUnmounted) return
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const wsUrl = `${protocol}//${window.location.host}/api/v1/metrics/live`
       
-      setLatencyData(prev => {
-        const newData = [...prev, { time: timeString, ms: data.latencyMs }]
-        if (newData.length > 20) newData.shift() // Keep last 20 points
-        return newData
-      })
+      try {
+        ws = new WebSocket(wsUrl)
+
+        ws.onopen = () => {
+          if (!isUnmounted) {
+            setIsConnected(true)
+          }
+        }
+
+        ws.onmessage = (event) => {
+          if (isUnmounted) return
+          try {
+            const data = JSON.parse(event.data)
+            setKpis({
+              activeAgents: data.activeAgents,
+              memoryGb: data.memoryGb,
+              latencyMs: data.latencyMs,
+              totalExecutions: data.totalExecutions
+            })
+
+            // Update time series
+            const now = new Date()
+            const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+            
+            setLatencyData(prev => {
+              const newData = [...prev, { time: timeString, ms: data.latencyMs }]
+              if (newData.length > 20) newData.shift() // Keep last 20 points
+              return newData
+            })
+          } catch (e) {
+            console.error('Failed to parse WebSocket metrics:', e)
+          }
+        }
+
+        ws.onerror = () => {
+          if (!isUnmounted) {
+            setIsConnected(false)
+          }
+        }
+
+        ws.onclose = () => {
+          if (!isUnmounted) {
+            setIsConnected(false)
+            // Schedule reconnection attempt in 3 seconds
+            reconnectTimeout = setTimeout(connect, 3000)
+          }
+        }
+      } catch (err) {
+        console.error('WebSocket connection error:', err)
+        if (!isUnmounted) {
+          setIsConnected(false)
+          reconnectTimeout = setTimeout(connect, 3000)
+        }
+      }
     }
 
-    ws.onclose = () => {
-      setIsConnected(false)
-    }
+    connect()
 
     return () => {
-      ws.close()
+      isUnmounted = true
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
+      if (ws) ws.close()
     }
   }, [])
+
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

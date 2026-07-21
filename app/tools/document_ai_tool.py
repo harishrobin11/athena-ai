@@ -30,7 +30,10 @@ def analyze_document_layout(tool_input: str, context: dict = None) -> str:
     try:
         payload = processor.process_pdf(file_path)
         
-        result_string = f"### Document Extraction Metrics for {payload.filename}\n\n"
+        result_string = f"### Document Extraction & Content for {payload.filename}\n\n"
+        if payload.raw_text and payload.raw_text.strip():
+            result_string += f"#### [Extracted Document Text]\n{payload.raw_text.strip()}\n\n"
+
         result_string += "#### [Extracted Meta Indicators]\n"
         for k, v in payload.extracted_metadata.items():
             result_string += f"- **{k}**: {v}\n"
@@ -45,6 +48,7 @@ def analyze_document_layout(tool_input: str, context: dict = None) -> str:
                     result_string += f"| {' | '.join(row)} |\n"
                     
         return result_string
+
 
     except Exception as e:
         return f"Execution Failure within Document AI Ingestion tool: {str(e)}"
