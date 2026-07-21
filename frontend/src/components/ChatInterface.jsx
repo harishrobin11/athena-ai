@@ -1,14 +1,23 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 
 export default function ChatInterface() {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Welcome to Athena AI. I am connected to the Enterprise Knowledge Graph and available for secure querying. How can I assist you today?' }
   ])
   const [input, setInput] = useState('')
+  const [attachments, setAttachments] = useState([])
+  const fileInputRef = useRef(null)
 
   const handleSend = () => {
-    if (!input.trim()) return
-    setMessages(prev => [...prev, { role: 'user', content: input }])
+    if (!input.trim() && attachments.length === 0) return
+    
+    const newMessage = { 
+      role: 'user', 
+      content: input,
+      attachments: [...attachments]
+    }
+    
+    setMessages(prev => [...prev, newMessage])
     
     // Simulate streaming response
     setTimeout(() => {
@@ -16,6 +25,22 @@ export default function ChatInterface() {
     }, 500)
     
     setInput('')
+    setAttachments([])
+  }
+
+  const handleFileChange = (e) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files).map(file => ({
+        name: file.name,
+        type: file.type,
+        url: URL.createObjectURL(file)
+      }))
+      setAttachments(prev => [...prev, ...newFiles])
+    }
+  }
+
+  const removeAttachment = (index) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index))
   }
 
   return (
@@ -29,24 +54,66 @@ export default function ChatInterface() {
                 : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700/50'
             }`}>
               <p className="text-sm leading-relaxed">{msg.content}</p>
+              {msg.attachments && msg.attachments.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {msg.attachments.map((att, i) => (
+                    att.type.startsWith('image/') ? (
+                      <img key={i} src={att.url} alt={att.name} className="h-20 w-20 object-cover rounded-lg border border-blue-400/30" />
+                    ) : (
+                      <div key={i} className="flex items-center gap-2 bg-blue-700/50 px-3 py-2 rounded-lg text-xs">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                        <span className="truncate max-w-[120px]">{att.name}</span>
+                      </div>
+                    )
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ))}
       </div>
       
-      <div className="p-4 bg-slate-800/50 border-t border-slate-800 backdrop-blur-md">
-        <div className="flex gap-3">
+      <div className="p-4 bg-slate-800/50 border-t border-slate-800 backdrop-blur-md flex flex-col gap-3">
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 px-2">
+            {attachments.map((att, i) => (
+              <div key={i} className="relative group flex items-center gap-2 bg-slate-700 px-3 py-1.5 rounded-lg text-xs text-slate-200 border border-slate-600">
+                <span className="truncate max-w-[150px]">{att.name}</span>
+                <button onClick={() => removeAttachment(i)} className="text-slate-400 hover:text-red-400 transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-3 items-end">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileChange} 
+            className="hidden" 
+            multiple
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="p-3 text-slate-400 hover:text-blue-400 hover:bg-slate-800 rounded-xl transition-all border border-transparent hover:border-slate-700"
+            title="Attach file or image"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+          </button>
+          
           <input 
             type="text" 
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder="Ask Athena to query Neo4j, analyze a PDF, or run a workflow..."
-            className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all shadow-inner"
+            className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all shadow-inner h-[46px]"
           />
           <button 
             onClick={handleSend}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors shadow-lg shadow-blue-500/20 flex items-center gap-2"
+            disabled={!input.trim() && attachments.length === 0}
+            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 h-[46px] rounded-xl text-sm font-medium transition-colors shadow-lg shadow-blue-500/20 flex items-center gap-2"
           >
             Send
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>

@@ -7,6 +7,8 @@ services:
       dockerfile: Dockerfile
     container_name: athena_backend
     restart: always
+    env_file:
+      - .env
     environment:
       - REDIS_URL=redis://redis:6379
       - ANONYMIZED_TELEMETRY=false
@@ -23,6 +25,8 @@ services:
       dockerfile: Dockerfile
     container_name: athena_worker
     restart: always
+    env_file:
+      - .env
     environment:
       - REDIS_URL=redis://redis:6379
     command: celery -A app.core.celery_app worker --loglevel=info
