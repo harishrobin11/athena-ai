@@ -14,7 +14,7 @@ import shutil
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-import pdfplumber
+import pypdf
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, status
 from fastapi.responses import StreamingResponse, HTMLResponse
 from pydantic import BaseModel, Field
@@ -703,11 +703,11 @@ async def process_document_automation(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, buffer)
         raw_lines = []
         try:
-            with pdfplumber.open(temp_file_path) as pdf:
-                for page in pdf.pages:
-                    text = page.extract_text()
-                    if text and text.strip():
-                        raw_lines.extend([line.strip() for line in text.split("\n") if line.strip()])
+            reader = pypdf.PdfReader(temp_file_path)
+            for page in reader.pages:
+                text = page.extract_text()
+                if text and text.strip():
+                    raw_lines.extend([line.strip() for line in text.split("\n") if line.strip()])
         except Exception as e:
             print(f"[PARSER LOG] Primary layout reader skipped: {e}")
             

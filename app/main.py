@@ -25,7 +25,11 @@ from app.api.billing import router as billing_router
 from app.api.notifications import router as notifications_router
 from app.api.cache import router as cache_router
 from app.api.security import router as security_router
-from fastapi_limiter import FastAPILimiter
+try:
+    from fastapi_limiter import FastAPILimiter
+except Exception:
+    FastAPILimiter = None
+
 from app.db.redis import redis_manager
 from contextlib import asynccontextmanager
 from app.core.logger import logger
@@ -34,14 +38,14 @@ from app.core.logger import logger
 async def lifespan(app: FastAPI):
     await redis_manager.connect()
     client = redis_manager.get_client()
-    if client:
+    if client and FastAPILimiter is not None:
         try:
             await FastAPILimiter.init(client)
             logger.info("FastAPILimiter initialized")
         except Exception as e:
             logger.error(f"Failed to initialize FastAPILimiter: {e}")
     yield
-    if client:
+    if client and FastAPILimiter is not None:
         try:
             await FastAPILimiter.close()
         except Exception:

@@ -17,7 +17,7 @@ SQLAlchemy>=2.0
 psycopg2-binary
 redis
 celery[redis]
-fastapi-limiter
+fastapi-limiter==0.1.6
 
 # ── LangChain Ecosystem (let pip resolve compatible versions) ─────────────────
 langchain==0.3.27
@@ -47,7 +47,6 @@ scipy
 
 # ── Document Processing ───────────────────────────────────────────────────────
 pypdf
-pdfplumber
 flashrank
 tiktoken
 

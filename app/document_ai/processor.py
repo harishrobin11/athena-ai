@@ -1,5 +1,5 @@
 import os
-import pdfplumber
+import pypdf
 from typing import Dict, Any, List
 from pydantic import BaseModel, Field
 
@@ -28,20 +28,14 @@ class DocumentIntelligenceProcessor:
         extracted_text = []
         extracted_tables = []
 
-        with pdfplumber.open(file_path) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text(layout=True)
+        try:
+            reader = pypdf.PdfReader(file_path)
+            for page in reader.pages:
+                text = page.extract_text()
                 if text:
                     extracted_text.append(text)
-                
-                tables = page.extract_tables()
-                for table in tables:
-                    cleaned_table = [
-                        [cell.strip() if cell else "" for cell in row]
-                        for row in table if any(row)
-                    ]
-                    if cleaned_table:
-                        extracted_tables.append(cleaned_table)
+        except Exception as e:
+            print(f"[PROCESSOR LOG] PDF reader error: {e}")
 
         full_text = "\n--- PAGE BREAK ---\n".join(extracted_text)
         heuristic_metadata = self._apply_heuristics(full_text)
