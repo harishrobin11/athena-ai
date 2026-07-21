@@ -27,13 +27,16 @@ export default function ChatInterface() {
     setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: 'Processing request...' }])
 
     try {
+      const selectedDocs = userMessage.attachments.map(att => att.name)
+
       const response = await fetch('/api/v1/agent/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: currentText,
           tenant_id: 'default',
-          workspace_id: 'default'
+          workspace_id: 'default',
+          selected_documents: selectedDocs
         })
       })
 
@@ -55,10 +58,22 @@ export default function ChatInterface() {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.replace('data: ', ''))
-              if (data.event_type === 'token') {
-                accumText += data.content + ' '
+              if (data.error) {
+                accumText = `Error: ${data.error}`
                 setMessages(prev => prev.map(msg => 
-                  msg.id === assistantId ? { ...msg, content: accumText.trim() } : msg
+                  msg.id === assistantId ? { ...msg, content: accumText } : msg
+                ))
+              } else if (data.event_type === 'token') {
+                accumText = data.content
+                setMessages(prev => prev.map(msg => 
+                  msg.id === assistantId ? { ...msg, content: accumText } : msg
+                ))
+              } else if (data.event_type === 'final') {
+                if (data.content && !accumText.trim()) {
+                  accumText = data.content
+                }
+                setMessages(prev => prev.map(msg => 
+                  msg.id === assistantId ? { ...msg, content: accumText || 'Workflow completed successfully.' } : msg
                 ))
               } else if (data.event_type === 'thought') {
                 const nodeLabel = data.node_name ? data.node_name.replace('_', ' ') : 'agent';
@@ -80,8 +95,9 @@ export default function ChatInterface() {
         ))
       }
     } catch (err) {
+      console.error("Chat API error:", err)
       setMessages(prev => prev.map(msg => 
-        msg.id === assistantId ? { ...msg, content: `Athena Assistant: Hello! Received message "${currentText}". System online.` } : msg
+        msg.id === assistantId ? { ...msg, content: `Error: Unable to complete request (${err.message || 'Server connection failed'})` } : msg
       ))
     }
   }

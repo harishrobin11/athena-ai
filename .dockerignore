@@ -26,6 +26,7 @@ var/
 
 # Virtual Environment
 venv/
+.venv/
 .env
 
 # Node

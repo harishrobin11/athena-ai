@@ -48,10 +48,46 @@ class AthenaSupervisorOrchestrator:
             if not isinstance(response, dict):
                 response = {}
         except Exception as e:
-            print(f"[ORCHESTRATOR WARNING] JSON Parsing Error: {e}")
-            response = {"next_step": "FINISH"}
+            print(f"[ORCHESTRATOR WARNING] JSON / LLM Parsing Error: {e}")
+            response = {}
+
+        next_step = response.get("next_step")
+        execution_plan = response.get("execution_plan", [])
+
+        # Smart Fallback Keyword Router if LLM is offline or defaults to FINISH on first turn
+        if not next_step or next_step == "FINISH":
+            user_msg = ""
+            for msg in reversed(state.get("messages", [])):
+                if getattr(msg, "type", "") == "human":
+                    user_msg = str(msg.content).lower()
+                    break
             
+            selected_docs = state.get("context_metadata", {}).get("selected_documents", [])
+
+            # Check if any worker results already exist in conversation state
+            has_worker_result = any(
+                "[Worker Result]" in str(getattr(m, "content", "")) for m in state.get("messages", [])
+            )
+
+            if not has_worker_result:
+                if selected_docs or any(kw in user_msg for kw in ["pdf", "document", "file", "uploaded", "invoice", "extract", "neural"]):
+                    next_step = "rag_worker"
+                    execution_plan = ["Retrieve and analyze document context from vector vault"]
+                elif any(kw in user_msg for kw in ["search", "web", "google", "internet", "news", "latest"]):
+                    next_step = "research_worker"
+                    execution_plan = ["Perform live internet search"]
+                elif any(kw in user_msg for kw in ["sql", "database", "query", "table", "sales"]):
+                    next_step = "sql_worker"
+                    execution_plan = ["Query relational database"]
+                elif any(kw in user_msg for kw in ["calculate", "math", "python", "code"]):
+                    next_step = "code_worker"
+                    execution_plan = ["Execute python code calculation"]
+                else:
+                    next_step = "FINISH"
+            else:
+                next_step = "FINISH"
+
         return {
-            "next_step": response.get("next_step", "FINISH"),
-            "execution_plan": response.get("execution_plan", [])
+            "next_step": next_step,
+            "execution_plan": execution_plan
         }

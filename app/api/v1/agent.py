@@ -23,7 +23,11 @@ async def agent_chat(
         "tenant_id": payload.tenant_id,
         "workspace_id": payload.workspace_id,
         "user_id": "api_user",
-        "context_metadata": {"dept_id": department, "workspace_id": payload.workspace_id}
+        "context_metadata": {
+            "dept_id": department, 
+            "workspace_id": payload.workspace_id,
+            "selected_documents": payload.selected_documents or []
+        }
     }
 
     import uuid

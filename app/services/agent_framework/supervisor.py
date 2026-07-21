@@ -383,18 +383,35 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
         if isinstance(msg.content, str):
             msg.content = ssn_pattern.sub("[REDACTED PII]", msg.content)
 
-    # Generate the final response using the local Ollama LLM instance
-    response = await azure_llm.ainvoke(messages)
+    # Generate the final response using the LLM instance
+    try:
+        response = await azure_llm.ainvoke(messages)
+    except Exception as e:
+        print(f"[LLM FALLBACK WARNING] LLM invoke failed in final_synthesis: {e}")
+        # Extract worker results or document data from state messages
+        worker_contents = []
+        for msg in state.get("messages", []):
+            text = str(getattr(msg, "content", ""))
+            if "[Worker Result]" in text or "Document Extraction" in text or "Search Results" in text or "Retrieved context:" in text:
+                # Clean up prefix for presentation
+                clean_text = text.replace("[Worker Result]:", "").strip()
+                worker_contents.append(clean_text)
+        
+        if worker_contents:
+            synthesized_text = "### Athena Knowledge Synthesis\n\n" + "\n\n---\n\n".join(worker_contents)
+        else:
+            synthesized_text = f"Hello! I received your query. (Note: Enterprise LLM is currently in offline fallback mode. Configure a valid OPENAI_API_KEY in .env for full conversational responses.)"
+            
+        response = AIMessage(content=synthesized_text)
     
     # Extract token usage and record in database
-    usage = response.response_metadata.get("token_usage", {})
+    usage = getattr(response, "response_metadata", {}).get("token_usage", {})
     total_tokens = usage.get("total_tokens")
     # Langchain 0.2 fallback
     if not total_tokens and hasattr(response, "usage_metadata") and response.usage_metadata:
         total_tokens = response.usage_metadata.get("total_tokens")
         
-    # If using local Ollama, it might not return tokens reliably in some versions,
-    # so we fallback to a rough estimate (1 word ~= 1.3 tokens)
+    # If using local Ollama or fallback, estimate token count
     if not total_tokens:
         total_tokens = int(len(response.content.split()) * 1.3) + int(len(str(messages).split()) * 1.3)
         
@@ -403,7 +420,6 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
         from app.db.models import TokenUsage
         db = SessionLocal()
         
-        # Ensure we have a valid integer user_id
         try:
             uid = int(state.get("user_id", 0))
         except (ValueError, TypeError):

@@ -20,3 +20,4 @@ class AgentChatRequest(BaseModel):
     department: Optional[str] = Field(None, example="FINANCE")
     tenant_id: Optional[str] = Field("default", example="1")
     workspace_id: Optional[str] = Field("default", example="1")
+    selected_documents: Optional[list[str]] = Field(default=[], description="Selected document filenames")
