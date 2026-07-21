@@ -57,6 +57,8 @@ app = FastAPI(
     title="Athena AI Core Engine",
     description="Sprint 8 Production API & Sprint 21 Architecture Unified API Gateway — Multi-Tenant Isolation",
     version="1.0.0",
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
     lifespan=lifespan,
     contact={
         "name": "Athena AI Team",

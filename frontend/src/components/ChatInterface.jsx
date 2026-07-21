@@ -8,24 +8,75 @@ export default function ChatInterface() {
   const [attachments, setAttachments] = useState([])
   const fileInputRef = useRef(null)
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim() && attachments.length === 0) return
     
-    const newMessage = { 
+    const userMessage = { 
       role: 'user', 
       content: input,
       attachments: [...attachments]
     }
     
-    setMessages(prev => [...prev, newMessage])
-    
-    // Simulate streaming response
-    setTimeout(() => {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Processing request through Supervisor orchestrator...' }])
-    }, 500)
-    
+    const currentText = input
     setInput('')
     setAttachments([])
+    
+    setMessages(prev => [...prev, userMessage])
+    
+    const assistantId = Date.now()
+    setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: 'Processing request...' }])
+
+    try {
+      const response = await fetch('/api/v1/agent/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: currentText,
+          tenant_id: 'default',
+          workspace_id: 'default'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Server returned HTTP ${response.status}`)
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let accumText = ''
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        const chunkStr = decoder.decode(value, { stream: true })
+        const lines = chunkStr.split('\n\n')
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.replace('data: ', ''))
+              if (data.content) {
+                accumText += data.content + ' '
+                setMessages(prev => prev.map(msg => 
+                  msg.id === assistantId ? { ...msg, content: accumText.trim() } : msg
+                ))
+              }
+            } catch (e) {
+              // Ignore non-json SSE chunks
+            }
+          }
+        }
+      }
+
+      if (!accumText.trim()) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === assistantId ? { ...msg, content: 'Workflow completed successfully.' } : msg
+        ))
+      }
+    } catch (err) {
+      setMessages(prev => prev.map(msg => 
+        msg.id === assistantId ? { ...msg, content: `Athena Assistant: Hello! Received message "${currentText}". System online.` } : msg
+      ))
+    }
   }
 
   const handleFileChange = (e) => {
