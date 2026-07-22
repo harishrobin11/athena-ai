@@ -16,7 +16,7 @@ from typing import List, Dict, Any, Optional
 
 import pypdf
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, BackgroundTasks, status
-from fastapi.responses import StreamingResponse, HTMLResponse
+from fastapi.responses import StreamingResponse, HTMLResponse, FileResponse
 from pydantic import BaseModel, Field
 
 # Authentication & Security Infrastructure (Circular-Dependency Proof)
@@ -631,6 +631,26 @@ def get_documents_endpoint(current_user=Depends(get_current_user), workspace_id:
     # Pass workspace_id to list_documents
     rows = list_documents(current_user["user_id"], workspace_id)
     return {"documents": [{"filename": row[1]} for row in rows]}
+
+@router.get("/documents/{filename}")
+def get_document_file(filename: str):
+    """
+    Serves generated images and document artifacts from local storage.
+    """
+    storage_root = os.path.join(os.getcwd(), "storage", "documents")
+    
+    # 1. Direct check in storage root
+    direct_path = os.path.join(storage_root, filename)
+    if os.path.isfile(direct_path):
+        return FileResponse(direct_path)
+
+    # 2. Check user subdirectories (e.g. storage/documents/user_1/...)
+    for root, dirs, files in os.walk(storage_root):
+        if filename in files:
+            target_path = os.path.join(root, filename)
+            return FileResponse(target_path)
+
+    raise HTTPException(status_code=404, detail="File asset not found")
 
 @router.delete("/documents/{filename}", response_model=DeleteResponse)
 def delete_document(filename: str, current_user=Depends(get_current_user), db=Depends(get_db)):

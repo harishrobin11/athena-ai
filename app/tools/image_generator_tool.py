@@ -38,7 +38,7 @@ def generate_image(tool_input: str, context: dict = None) -> str:
             return (
                 f"### Generated Image\n\n"
                 f"**Prompt:** *\"{prompt}\"*\n\n"
-                f"![{prompt}](http://localhost:8080/api/documents/{filename}?download=false)\n\n"
+                f"![{prompt}](/api/documents/{filename}?download=false)\n\n"
                 f"*Saved to storage as `{filename}`*"
             )
     except Exception as e:
@@ -62,7 +62,7 @@ def generate_image(tool_input: str, context: dict = None) -> str:
         return (
             f"### Generated Image\n\n"
             f"**Prompt:** *\"{prompt}\"*\n\n"
-            f"![{prompt}](http://localhost:8080/api/documents/{filename}?download=false)\n\n"
+            f"![{prompt}](/api/documents/{filename}?download=false)\n\n"
             f"*Saved to storage as `{filename}`*"
         )
     except Exception as ex:

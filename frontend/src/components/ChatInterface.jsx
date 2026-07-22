@@ -228,6 +228,72 @@ export default function ChatInterface({
     setTimeout(() => setCopiedId(null), 2000)
   }
 
+  const renderMessageContent = (content) => {
+    if (!content) return null
+    const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g
+    const parts = []
+    let lastIndex = 0
+    let match
+
+    while ((match = imageRegex.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({
+          type: 'text',
+          value: content.substring(lastIndex, match.index)
+        })
+      }
+
+      const altText = match[1]
+      let imageUrl = match[2]
+      if (imageUrl.includes('/api/documents/')) {
+        imageUrl = imageUrl.substring(imageUrl.indexOf('/api/documents/'))
+      }
+
+      parts.push({
+        type: 'image',
+        alt: altText,
+        url: imageUrl
+      })
+
+      lastIndex = imageRegex.lastIndex
+    }
+
+    if (lastIndex < content.length) {
+      parts.push({
+        type: 'text',
+        value: content.substring(lastIndex)
+      })
+    }
+
+    return (
+      <div className="space-y-3">
+        {parts.map((part, i) => {
+          if (part.type === 'image') {
+            return (
+              <div key={i} className="my-3 rounded-xl overflow-hidden border border-slate-700/80 bg-slate-950 p-2.5 shadow-xl max-w-md">
+                <img 
+                  src={part.url} 
+                  alt={part.alt} 
+                  className="w-full h-auto max-h-[420px] object-contain rounded-lg border border-slate-800"
+                />
+                {part.alt && (
+                  <p className="text-xs text-slate-400 mt-2 px-1 text-center font-medium italic">
+                    🎨 {part.alt}
+                  </p>
+                )}
+              </div>
+            )
+          }
+          return (
+            <div key={i} className="whitespace-pre-wrap font-sans leading-relaxed">
+              {part.value}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
   const promptCards = [
     {
       title: "📄 Analyze PDF Invoice",
@@ -331,7 +397,7 @@ export default function ChatInterface({
                     ? 'bg-indigo-600 text-white rounded-br-sm shadow-indigo-600/20'
                     : 'bg-slate-900/90 text-slate-100 rounded-bl-sm border border-slate-800/80 backdrop-blur-md'
                 }`}>
-                  <div className="whitespace-pre-wrap font-sans">{msg.content}</div>
+                  {renderMessageContent(msg.content)}
 
                   {/* Attachments preview list */}
                   {msg.attachments && msg.attachments.length > 0 && (
