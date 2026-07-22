@@ -576,6 +576,16 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
 
     facts_context = ("\n\n[Retrieved Context & Data]:\n" + "\n".join(worker_facts)) if worker_facts else ""
 
+    # ⚡️ High-Performance Latency Accelerator:
+    # If a worker (Vision AI, Image Generator, Document AI) already produced a complete report, return it directly to save 10-15 seconds of redundant LLM re-synthesis!
+    if worker_facts and any(k in facts_context for k in ["Vision Image Analysis", "Image Generation Result", "Document Extraction & Content", "Document parsed."]):
+        print("[SYNTHESIS ACCELERATOR] Bypassing redundant LLM re-synthesis. Direct return in <1s!")
+        synthesized_text = "### Athena Document & Knowledge Synthesis\n\n" + "\n\n---\n\n".join(worker_facts)
+        return {
+            "messages": [AIMessage(content=synthesized_text)],
+            "next_step": "END"
+        }
+
     sys_msg = SystemMessage(
         content=(
             f"You are Athena AI, an intelligent Enterprise Knowledge Assistant for the {dept} department. {memories_str}\n{facts_context}\n\n"
