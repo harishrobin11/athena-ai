@@ -14,6 +14,8 @@ export default function ChatInterface({
   
   const fileInputRef = useRef(null)
   const messagesEndRef = useRef(null)
+  const abortControllerRef = useRef(null)
+  const currentAssistantIdRef = useRef(null)
 
   // Sync messages when current session changes
   useEffect(() => {
@@ -31,6 +33,28 @@ export default function ChatInterface({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isSearching])
+
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+    }
+    setIsSearching(false)
+    if (currentAssistantIdRef.current) {
+      setMessages(prev => prev.map(msg => {
+        if (msg.id === currentAssistantIdRef.current) {
+          const currentText = msg.content || ''
+          if (!currentText || currentText === 'Processing request...' || currentText.startsWith('Analyzing (')) {
+            return { ...msg, content: '[Generation stopped by user]' }
+          }
+          if (!currentText.includes('[Generation stopped by user]')) {
+            return { ...msg, content: currentText + '\n\n[Generation stopped by user]' }
+          }
+        }
+        return msg
+      }))
+    }
+  }
 
   const handleSend = async (textToSend = null) => {
     const messageText = textToSend !== null ? textToSend : input
@@ -51,8 +75,12 @@ export default function ChatInterface({
     setMessages(updatedMessages)
 
     const assistantId = Date.now() + '_assistant'
+    currentAssistantIdRef.current = assistantId
     const initialAssistantMsg = { id: assistantId, role: 'assistant', content: 'Processing request...' }
     setMessages(prev => [...prev, initialAssistantMsg])
+
+    // Create fresh AbortController for stream cancellation
+    abortControllerRef.current = new AbortController()
 
     try {
       // 1. Upload attached files in parallel to document service
@@ -71,14 +99,17 @@ export default function ChatInterface({
             const uploadRes = await fetch('/api/upload', {
               method: 'POST',
               headers: uploadHeaders,
-              body: formData
+              body: formData,
+              signal: abortControllerRef.current?.signal
             })
             if (!uploadRes.ok) {
               const errData = await uploadRes.json().catch(() => ({}))
               console.warn("Auto-upload attachment warning:", errData)
             }
           } catch (uploadErr) {
-            console.warn("Auto-upload attachment error:", uploadErr)
+            if (uploadErr.name !== 'AbortError') {
+              console.warn("Auto-upload attachment error:", uploadErr)
+            }
           }
         }))
       }
@@ -93,7 +124,8 @@ export default function ChatInterface({
           tenant_id: 'default',
           workspace_id: 'default',
           selected_documents: selectedDocs
-        })
+        }),
+        signal: abortControllerRef.current?.signal
       })
 
       if (!response.ok) {
@@ -160,12 +192,17 @@ export default function ChatInterface({
         ))
       }
     } catch (err) {
-      console.error("Chat API error:", err)
-      setMessages(prev => prev.map(msg =>
-        msg.id === assistantId ? { ...msg, content: `Error: Unable to complete request (${err.message || 'Server connection failed'})` } : msg
-      ))
+      if (err.name === 'AbortError') {
+        console.log("Request aborted by user")
+      } else {
+        console.error("Chat API error:", err)
+        setMessages(prev => prev.map(msg =>
+          msg.id === assistantId ? { ...msg, content: `Error: Unable to complete request (${err.message || 'Server connection failed'})` } : msg
+        ))
+      }
     } finally {
       setIsSearching(false)
+      abortControllerRef.current = null
     }
   }
 
@@ -402,21 +439,26 @@ export default function ChatInterface({
               className="flex-1 bg-transparent px-2 py-1.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
             />
 
-            <button
-              type="button"
-              onClick={() => handleSend()}
-              disabled={isSearching || (!input.trim() && attachments.length === 0)}
-              className="p-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-all shadow-md shadow-indigo-600/30 shrink-0 active:scale-95"
-            >
-              {isSearching ? (
-                <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
+            {isSearching ? (
+              <button
+                type="button"
+                onClick={handleStopGeneration}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-semibold text-xs transition-all shadow-md shadow-rose-600/30 flex items-center gap-2 shrink-0 active:scale-95 animate-pulse"
+                title="Stop Generation"
+              >
+                <div className="w-2.5 h-2.5 bg-white rounded-sm"></div>
+                <span>Stop Generation</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleSend()}
+                disabled={!input.trim() && attachments.length === 0}
+                className="p-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-all shadow-md shadow-indigo-600/30 shrink-0 active:scale-95"
+              >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-              )}
-            </button>
+              </button>
+            )}
           </div>
         </div>
 
