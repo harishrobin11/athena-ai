@@ -41,6 +41,7 @@ sentence-transformers
 tokenizers==0.22.2
 safetensors
 huggingface_hub
+accelerate
 scikit-learn
 numpy==1.26.4
 scipy
