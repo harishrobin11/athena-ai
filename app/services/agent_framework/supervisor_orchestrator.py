@@ -86,24 +86,9 @@ class AthenaSupervisorOrchestrator:
                 "execution_plan": ["Query relational database"]
             }
 
-        # LLM Structural Router fallback for complex ambiguous queries
-        next_step = "rag_worker"
-        execution_plan = ["Process query and retrieve knowledge context"]
-        try:
-            import asyncio
-            # Limit LLM orchestrator call to 4s to prevent long hangs
-            response = await asyncio.wait_for(
-                self.chain.ainvoke({"messages": state["messages"]}),
-                timeout=4.0
-            )
-            if isinstance(response, dict):
-                next_step = response.get("next_step", "rag_worker")
-                execution_plan = response.get("execution_plan", [])
-        except Exception as e:
-            print(f"[ORCHESTRATOR WARNING] Structural Router bypass: {e}")
-
+        # Fast-Path 3: Instant response for general chat and questions (bypasses 4s LLM router delay)
         return {
-            "next_step": next_step,
-            "execution_plan": execution_plan
+            "next_step": "FINISH",
+            "execution_plan": ["Generate direct AI response"]
         }
 

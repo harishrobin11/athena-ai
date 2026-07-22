@@ -41,8 +41,9 @@ else:
         extra_body={
             "keep_alive": -1,
             "options": {
-                "num_thread": 4,
-                "num_ctx": 1024
+                "num_thread": 8,
+                "num_ctx": 1024,
+                "num_predict": 300
             }
         }
     )
