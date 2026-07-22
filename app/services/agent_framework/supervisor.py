@@ -11,7 +11,7 @@ import os
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
 
 _api_key = os.getenv("OPENAI_API_KEY", "ollama")
-_model = os.getenv("TARGET_LLM_MODEL", "llama3.2:3b")
+_model = os.getenv("TARGET_LLM_MODEL", "llama3.2:1b")
 
 _azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
 _azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
@@ -26,7 +26,7 @@ if _azure_api_key and _azure_endpoint:
         azure_deployment=_azure_deployment,
         temperature=0,
         streaming=True,
-        timeout=45.0
+        timeout=15.0
     )
 else:
     _default_ollama = "http://host.docker.internal:11434" if os.path.exists("/.dockerenv") else "http://127.0.0.1:11434"
@@ -37,7 +37,7 @@ else:
         base_url=f"{_ollama_host}/v1",
         temperature=0,
         streaming=True,
-        timeout=45.0,
+        timeout=15.0,
         extra_body={
             "keep_alive": -1,
             "options": {
@@ -488,15 +488,18 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
         if isinstance(msg.content, str):
             msg.content = ssn_pattern.sub("[REDACTED PII]", msg.content)
 
-    # Generate the final response using the LLM instance
+    # Generate the final response using the LLM instance with a strict 12s timeout
     try:
-        response = await azure_llm.ainvoke(compact_messages)
+        import asyncio
+        response = await asyncio.wait_for(azure_llm.ainvoke(compact_messages), timeout=12.0)
     except Exception as e:
-        print(f"[LLM FALLBACK WARNING] LLM invoke failed in final_synthesis: {e}")
+        print(f"[LLM FALLBACK WARNING] LLM invoke failed or timed out in final_synthesis: {e}")
         if worker_facts:
-            synthesized_text = "### Athena Knowledge Synthesis\n\n" + "\n\n---\n\n".join(worker_facts)
+            synthesized_text = "### Athena Document & Knowledge Synthesis\n\n" + "\n\n---\n\n".join(worker_facts)
+        elif facts_context:
+            synthesized_text = "### Athena Knowledge Synthesis\n\n" + facts_context
         else:
-            synthesized_text = f"Hello! How can I assist you with your workspace tasks today?"
+            synthesized_text = "Hello! How can I assist you with your workspace tasks today?"
             
         response = AIMessage(content=synthesized_text)
 
