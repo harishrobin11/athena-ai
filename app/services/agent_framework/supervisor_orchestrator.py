@@ -65,6 +65,11 @@ class AthenaSupervisorOrchestrator:
                 "next_step": "document_worker",
                 "execution_plan": ["Analyze image using vision AI worker"]
             }
+        elif any(kw in user_msg for kw in ["generate image", "create image", "draw image", "make an image", "generate an image", "generate a picture", "create a picture", "draw a", "generate graphic", "create graphic"]):
+            return {
+                "next_step": "image_worker",
+                "execution_plan": ["Generate image using local AI image generator worker"]
+            }
         elif selected_docs or any(kw in user_msg for kw in ["pdf", "document", "file", "uploaded", "invoice", "extract", "summary", "analyze", "read"]):
             return {
                 "next_step": "rag_worker",

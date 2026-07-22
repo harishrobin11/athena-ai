@@ -9,6 +9,7 @@ from app.services.agent_framework.supervisor import (
     document_worker_node,
     sql_worker_node,
     workflow_worker_node,
+    image_worker_node,
     final_synthesis_node
 )
 
@@ -22,6 +23,7 @@ workflow.add_node("research_worker", research_worker_node)
 workflow.add_node("document_worker", document_worker_node)
 workflow.add_node("sql_worker", sql_worker_node)
 workflow.add_node("workflow_worker", workflow_worker_node)
+workflow.add_node("image_worker", image_worker_node)
 workflow.add_node("final_synthesis", final_synthesis_node)
 
 workflow.set_entry_point("supervisor")
@@ -37,6 +39,7 @@ workflow.add_conditional_edges(
         "document_worker": "document_worker",
         "sql_worker": "sql_worker",
         "workflow_worker": "workflow_worker",
+        "image_worker": "image_worker",
         "FINISH": "final_synthesis"  # Send to synthesis to generate the text output block
     }
 )
@@ -48,6 +51,7 @@ workflow.add_edge("research_worker", "supervisor")
 workflow.add_edge("document_worker", "supervisor")
 workflow.add_edge("sql_worker", "supervisor")
 workflow.add_edge("workflow_worker", "supervisor")
+workflow.add_edge("image_worker", "supervisor")
 
 workflow.add_conditional_edges(
     "final_synthesis",

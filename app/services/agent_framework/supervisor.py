@@ -425,6 +425,24 @@ async def document_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     )
     return {"messages": [context_msg], "next_step": "supervisor"}
 
+async def image_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
+    from app.tools.registry import execute_tool
+    from langchain_core.messages import AIMessage
+    
+    user_query = ""
+    for msg in reversed(state.get("messages", [])):
+        if getattr(msg, "type", "") == "human":
+            user_query = str(msg.content)
+            break
+
+    print("[IMAGE WORKER] Executing image generation for:", user_query)
+    gen_result = execute_tool("generate_image", user_query)
+    
+    context_msg = AIMessage(
+        content=f"[Worker Result]: Image Generation Result:\n\n{gen_result}"
+    )
+    return {"messages": [context_msg], "next_step": "supervisor"}
+
 @track_prompt_execution(prompt_version="v1.0", task_name="sql_analytics")
 async def sql_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     from app.tools.registry import execute_tool

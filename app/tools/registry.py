@@ -20,6 +20,7 @@ from .python_tool import execute_python_code
 from .api_tool import execute_api_call
 from .schedule_tool import schedule_task
 from .api_hub_tools import slack_tool, jira_tool, salesforce_tool
+from .image_generator_tool import generate_image
 
 
 
