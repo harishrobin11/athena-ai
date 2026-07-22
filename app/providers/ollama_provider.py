@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Generator
 import ollama
 
-TEXT_MODEL = "llama3.2:3b"
+import os
+TEXT_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 VISION_MODEL = "moondream:latest"
 
 
