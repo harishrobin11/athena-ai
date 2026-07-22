@@ -190,18 +190,22 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     except Exception as e:
         print(f"[RAG WORKER] Error retrieving past conversations: {e}")
         
-    doc_context = "\n\n".join([d.page_content for d in docs]) if docs else "No relevant documents found in vault."
+    doc_context = "\n\n".join([d.page_content for d in docs]) if docs else ""
     
     conv_context = "\n\n".join([
         f"[{d.metadata.get('timestamp', 'Unknown')}] {d.metadata.get('role', 'Unknown').capitalize()}: {d.page_content}" 
         for d in past_conversations
-    ]) if past_conversations else "No relevant past conversations found."
+    ]) if past_conversations else ""
 
-    combined_context = f"[Enterprise Documents]:\n{doc_context}\n\n[Past Conversations]:\n{conv_context}"
-
-    context_msg = AIMessage(
-        content=f"[Worker Result]: RAG fetch complete. Retrieved context:\n\n{combined_context}"
-    )
+    if doc_context or conv_context:
+        combined_context = f"[Enterprise Documents]:\n{doc_context}\n\n[Past Conversations]:\n{conv_context}".strip()
+        context_msg = AIMessage(
+            content=f"[Worker Result]: RAG fetch complete. Retrieved context:\n\n{combined_context}"
+        )
+    else:
+        context_msg = AIMessage(
+            content=f"[Worker Result]: No specific document matches found in knowledge vault. Proceeding with general knowledge response."
+        )
     return {"messages": [context_msg], "next_step": "supervisor"}
 
 async def code_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
@@ -520,7 +524,14 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
     facts_context = ("\n\n[Retrieved Context & Data]:\n" + "\n".join(worker_facts)) if worker_facts else ""
 
     sys_msg = SystemMessage(
-        content=f"You are Athena AI, an Enterprise Knowledge Assistant for the {dept} department. {memories_str}\n{facts_context}\n\nProvide a clear, direct, and concise answer to the user query. Do not cite internal system tags or worker labels."
+        content=(
+            f"You are Athena AI, an intelligent Enterprise Knowledge Assistant for the {dept} department. {memories_str}\n{facts_context}\n\n"
+            "Instructions:\n"
+            "1. If relevant enterprise documents or worker results are provided above, prioritize them to answer the user query.\n"
+            "2. If no specific enterprise documents were found in the vault, answer the user query thoroughly, accurately, and helpfully using your general AI knowledge.\n"
+            "3. Do NOT state that you lack information or refuse to answer simply because a document was not uploaded, unless the user explicitly requested a specific missing file.\n"
+            "4. Do not cite internal system tags, worker labels, or metadata."
+        )
     )
     
     compact_messages = [sys_msg, HumanMessage(content=user_query or "Hi")]
@@ -532,10 +543,10 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
         if isinstance(msg.content, str):
             msg.content = ssn_pattern.sub("[REDACTED PII]", msg.content)
 
-    # Generate the final response using the LLM instance with a strict 12s timeout
+    # Generate the final response using the LLM instance with a 25s timeout
     try:
         import asyncio
-        response = await asyncio.wait_for(azure_llm.ainvoke(compact_messages), timeout=12.0)
+        response = await asyncio.wait_for(azure_llm.ainvoke(compact_messages), timeout=25.0)
     except Exception as e:
         print(f"[LLM FALLBACK WARNING] LLM invoke failed or timed out in final_synthesis: {e}")
         if worker_facts:
