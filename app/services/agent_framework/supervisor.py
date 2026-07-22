@@ -373,19 +373,38 @@ async def document_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
         import base64
         import ollama
 
-        possible_paths = [
-            os.path.join(os.getcwd(), "storage", "documents", f"user_1", filename),
-            os.path.join(os.getcwd(), "storage", "documents", filename),
-        ]
+        root_storage = os.path.join(os.getcwd(), "storage")
         img_path = None
-        for p in possible_paths:
-            if os.path.exists(p):
-                img_path = p
+        
+        for root, dirs, files in os.walk(root_storage):
+            if filename in files:
+                img_path = os.path.join(root, filename)
                 break
+                
         if not img_path:
-            all_imgs = glob.glob(os.path.join(os.getcwd(), "storage", "documents", "**", filename), recursive=True)
+            fn_lower = filename.lower()
+            clean_stem = os.path.splitext(fn_lower)[0]
+            for root, dirs, files in os.walk(root_storage):
+                for f in files:
+                    f_lower = f.lower()
+                    if f_lower == fn_lower or (len(clean_stem) > 4 and clean_stem in f_lower):
+                        img_path = os.path.join(root, f)
+                        break
+                if img_path:
+                    break
+                    
+        if not img_path:
+            all_imgs = glob.glob(os.path.join(root_storage, "**", filename), recursive=True)
             if all_imgs:
                 img_path = all_imgs[0]
+            else:
+                # Fallback to most recent image file in storage
+                recent_imgs = glob.glob(os.path.join(root_storage, "**", "*.png"), recursive=True) + \
+                              glob.glob(os.path.join(root_storage, "**", "*.jpg"), recursive=True) + \
+                              glob.glob(os.path.join(root_storage, "**", "*.jpeg"), recursive=True)
+                if recent_imgs:
+                    recent_imgs.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+                    img_path = recent_imgs[0]
 
         if img_path and os.path.exists(img_path):
             try:
