@@ -360,6 +360,50 @@ async def document_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
         filename = filename_response.content.strip()
 
     print("[DOCUMENT WORKER] Processing document:", filename)
+
+    # 🖼️ Vision AI path for Image Attachments (png, jpg, jpeg, webp)
+    if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
+        print("[DOCUMENT WORKER] Detected image file, invoking Vision AI:", filename)
+        import os
+        import glob
+        import base64
+        import ollama
+
+        possible_paths = [
+            os.path.join(os.getcwd(), "storage", "documents", f"user_1", filename),
+            os.path.join(os.getcwd(), "storage", "documents", filename),
+        ]
+        img_path = None
+        for p in possible_paths:
+            if os.path.exists(p):
+                img_path = p
+                break
+        if not img_path:
+            all_imgs = glob.glob(os.path.join(os.getcwd(), "storage", "documents", "**", filename), recursive=True)
+            if all_imgs:
+                img_path = all_imgs[0]
+
+        if img_path and os.path.exists(img_path):
+            try:
+                with open(img_path, "rb") as f:
+                    img_b64 = base64.b64encode(f.read()).decode("utf-8")
+                print(f"[DOCUMENT WORKER] Running Moondream vision analysis on {img_path}...")
+                vision_res = ollama.chat(
+                    model="moondream:latest",
+                    messages=[{
+                        "role": "user",
+                        "content": user_query or "Describe this image in detail.",
+                        "images": [img_b64]
+                    }]
+                )
+                vision_text = vision_res.message.content if hasattr(vision_res, 'message') else str(vision_res.get("message", {}).get("content", ""))
+                context_msg = AIMessage(
+                    content=f"[Worker Result]: Vision Image Analysis for '{filename}':\n\n{vision_text}"
+                )
+                return {"messages": [context_msg], "next_step": "supervisor"}
+            except Exception as ve:
+                print(f"[DOCUMENT WORKER] Vision model execution failed: {ve}")
+
     doc_result = execute_tool("analyze_document_layout", filename)
     
     sys_prompt = SystemMessage(

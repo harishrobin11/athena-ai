@@ -59,7 +59,13 @@ class AthenaSupervisorOrchestrator:
             return {"next_step": "FINISH", "execution_plan": []}
 
         # Fast-Path 2: Direct heuristic routing for PDFs/docs/search/code/queries
-        if selected_docs or any(kw in user_msg for kw in ["pdf", "document", "file", "uploaded", "invoice", "extract", "summary", "analyze", "read"]):
+        is_image_attachment = any(str(doc).lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')) for doc in selected_docs)
+        if is_image_attachment:
+            return {
+                "next_step": "document_worker",
+                "execution_plan": ["Analyze image using vision AI worker"]
+            }
+        elif selected_docs or any(kw in user_msg for kw in ["pdf", "document", "file", "uploaded", "invoice", "extract", "summary", "analyze", "read"]):
             return {
                 "next_step": "rag_worker",
                 "execution_plan": ["Retrieve and analyze document context from vector vault"]
