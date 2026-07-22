@@ -82,8 +82,8 @@ class AthenaSupervisorOrchestrator:
             }
 
         # LLM Structural Router fallback for complex ambiguous queries
-        next_step = "FINISH"
-        execution_plan = []
+        next_step = "rag_worker"
+        execution_plan = ["Process query and retrieve knowledge context"]
         try:
             import asyncio
             # Limit LLM orchestrator call to 4s to prevent long hangs
@@ -92,7 +92,7 @@ class AthenaSupervisorOrchestrator:
                 timeout=4.0
             )
             if isinstance(response, dict):
-                next_step = response.get("next_step", "FINISH")
+                next_step = response.get("next_step", "rag_worker")
                 execution_plan = response.get("execution_plan", [])
         except Exception as e:
             print(f"[ORCHESTRATOR WARNING] Structural Router bypass: {e}")

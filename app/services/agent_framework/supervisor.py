@@ -26,7 +26,7 @@ if _azure_api_key and _azure_endpoint:
         azure_deployment=_azure_deployment,
         temperature=0,
         streaming=True,
-        timeout=15.0
+        timeout=60.0
     )
 else:
     _default_ollama = "http://host.docker.internal:11434" if os.path.exists("/.dockerenv") else "http://127.0.0.1:11434"
@@ -37,7 +37,7 @@ else:
         base_url=f"{_ollama_host}/v1",
         temperature=0,
         streaming=True,
-        timeout=15.0,
+        timeout=60.0,
         extra_body={
             "keep_alive": -1,
             "options": {
