@@ -29,13 +29,34 @@ class DocumentIntelligenceProcessor:
         extracted_tables = []
 
         try:
-            reader = pypdf.PdfReader(file_path)
-            for page in reader.pages:
-                text = page.extract_text()
-                if text:
-                    extracted_text.append(text)
-        except Exception as e:
-            print(f"[PROCESSOR LOG] PDF reader error: {e}")
+            import fitz
+            doc = fitz.open(file_path)
+            for page in doc:
+                text = page.get_text("text")
+                if text and text.strip():
+                    extracted_text.append(text.strip())
+                # Extract tables using PyMuPDF if available
+                if hasattr(page, "find_tables"):
+                    try:
+                        tabs = page.find_tables()
+                        for tab in tabs:
+                            if hasattr(tab, "extract"):
+                                table_data = tab.extract()
+                                if table_data:
+                                    extracted_tables.append([[str(cell or "") for cell in row] for row in table_data])
+                    except Exception:
+                        pass
+        except Exception as ex:
+            print(f"[PROCESSOR LOG] fitz reader failed, using pypdf fallback: {ex}")
+            try:
+                import pypdf
+                reader = pypdf.PdfReader(file_path)
+                for page in reader.pages:
+                    text = page.extract_text()
+                    if text:
+                        extracted_text.append(text)
+            except Exception as e:
+                print(f"[PROCESSOR LOG] PDF reader error: {e}")
 
         full_text = "\n--- PAGE BREAK ---\n".join(extracted_text)
         heuristic_metadata = self._apply_heuristics(full_text)

@@ -7,11 +7,27 @@ class DocumentService:
     def __init__(self):
         self.splitter = DocumentSplitter()
         self.store = None
+        self._doc_cache = {}  # In-memory document text cache keyed by filename
 
     def _get_store(self):
         if self.store is None:
             self.store = VectorStore()
         return self.store
+
+    def cache_document_text(self, filename: str, documents: list, user_id: int = None):
+        """Caches raw loaded documents in memory for ultra-fast instant RAG lookup."""
+        full_text = "\n\n".join([doc.page_content for doc in documents if doc.page_content])
+        self._doc_cache[filename] = {
+            "text": full_text,
+            "documents": documents,
+            "user_id": user_id
+        }
+
+    def get_cached_document_text(self, filename: str) -> str:
+        """Retrieves cached document text if present."""
+        if filename in self._doc_cache:
+            return self._doc_cache[filename]["text"]
+        return ""
 
     def ingest(
         self,
@@ -22,10 +38,13 @@ class DocumentService:
     ):
         # Load the PDF
         documents = load_pdf(pdf_path)
+        filename = original_filename or Path(pdf_path).name
+
+        # Cache in memory immediately for 0ms chat access
+        self.cache_document_text(filename, documents, user_id=user_id)
 
         # Split into chunks
         chunks = self.splitter.split(documents)
-        filename = original_filename or Path(pdf_path).name
 
         for chunk in chunks:
             chunk.metadata["user_id"] = user_id

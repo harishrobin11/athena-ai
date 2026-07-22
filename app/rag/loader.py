@@ -32,6 +32,21 @@ def load_pdf(file_path: str):
             with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                 return [Document(page_content=f.read(), metadata={"source": file_path})]
 
+    # Try PyMuPDF (fitz) FIRST for blazingly fast PDF text extraction
+    try:
+        import fitz  # PyMuPDF
+        doc = fitz.open(file_path)
+        documents = []
+        for page_num in range(len(doc)):
+            page = doc[page_num]
+            text = page.get_text("text")
+            if text and text.strip():
+                documents.append(Document(page_content=text.strip(), metadata={"source": file_path, "page": page_num + 1}))
+        if documents:
+            return documents
+    except Exception as ex:
+        print(f"[LOADER INFO] PyMuPDF primary load failed or unreadable for {file_path}: {ex}")
+
     try:
         loader = PyPDFLoader(file_path)
         documents = loader.load()
@@ -39,20 +54,6 @@ def load_pdf(file_path: str):
             return documents
     except Exception as e:
         print(f"[LOADER WARNING] PyPDFLoader failed for {file_path}: {e}")
-
-    try:
-        import fitz  # PyMuPDF
-        doc = fitz.open(file_path)
-        documents = []
-        for page_num in range(len(doc)):
-            page = doc[page_num]
-            text = page.get_text()
-            if text.strip():
-                documents.append(Document(page_content=text, metadata={"source": file_path, "page": page_num + 1}))
-        if documents:
-            return documents
-    except Exception as ex:
-        print(f"[LOADER WARNING] PyMuPDF fallback failed: {ex}")
 
     filename = os.path.basename(file_path)
     return [Document(page_content=f"[Document: {filename}]\nFile uploaded into knowledge vault.", metadata={"source": file_path})]

@@ -18,7 +18,7 @@
   }
 }
 
-/* Copilot-Style Rotating & Glittering Animation Styles */
+/* Copilot / ChatGPT Rotating Glittering Border Animation */
 @keyframes rotate-conic {
   0% {
     transform: rotate(0deg);
@@ -39,67 +39,82 @@
 
 @keyframes float-sparkle {
   0% {
-    transform: translateY(0px) scale(0.6);
+    transform: translateY(0px) scale(0.5);
     opacity: 0;
   }
   50% {
     opacity: 1;
   }
   100% {
-    transform: translateY(-24px) scale(1.3);
+    transform: translateY(-28px) scale(1.4);
     opacity: 0;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4), 0 0 40px rgba(236, 72, 153, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(168, 85, 247, 0.8), 0 0 60px rgba(59, 130, 246, 0.6);
   }
 }
 
 .copilot-prompt-container {
   position: relative;
   border-radius: 1.25rem;
-  background: rgba(15, 23, 42, 0.7);
+  background: rgba(11, 15, 25, 0.8);
   backdrop-filter: blur(16px);
   padding: 2px;
   overflow: hidden;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .copilot-prompt-container::before {
   content: '';
   position: absolute;
-  top: -75%;
-  left: -75%;
-  width: 250%;
-  height: 250%;
+  top: -100%;
+  left: -100%;
+  width: 300%;
+  height: 300%;
   background: conic-gradient(
-    from 180deg,
-    transparent 0%,
-    rgba(99, 102, 241, 0.3) 25%,
-    rgba(168, 85, 247, 0.7) 50%,
-    rgba(236, 72, 153, 0.9) 75%,
-    transparent 100%
+    from 0deg,
+    #6366f1 0%,
+    #a855f7 20%,
+    #ec4899 40%,
+    #3b82f6 60%,
+    #10b981 80%,
+    #6366f1 100%
   );
-  animation: rotate-conic 8s linear infinite;
-  opacity: 0.35;
+  animation: rotate-conic 6s linear infinite;
+  opacity: 0.3;
   z-index: 0;
   transition: opacity 0.4s ease, animation-duration 0.4s ease;
 }
 
 .copilot-prompt-container:focus-within::before {
-  opacity: 0.85;
-  animation-duration: 4s;
+  opacity: 0.75;
+  animation-duration: 3.5s;
+}
+
+.copilot-prompt-container.searching {
+  animation: pulse-glow 2s infinite ease-in-out;
 }
 
 .copilot-prompt-container.searching::before {
   opacity: 1;
-  animation-duration: 1.8s;
+  animation-duration: 1.2s;
   background: conic-gradient(
-    from 180deg,
+    from 0deg,
     #3b82f6 0%,
-    #8b5cf6 25%,
-    #ec4899 50%,
-    #06b6d4 75%,
+    #8b5cf6 20%,
+    #ec4899 40%,
+    #f43f5e 60%,
+    #06b6d4 80%,
     #3b82f6 100%
   );
-  filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.6));
+  filter: drop-shadow(0 0 16px rgba(236, 72, 153, 0.8));
 }
 
 .copilot-prompt-inner {
@@ -108,22 +123,22 @@
   border-radius: 1.15rem;
   background: rgba(15, 23, 42, 0.95);
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
 }
 
 .copilot-prompt-container.searching .copilot-prompt-inner {
   background: linear-gradient(
     90deg,
     rgba(15, 23, 42, 0.95) 0%,
-    rgba(30, 41, 59, 0.85) 30%,
-    rgba(79, 70, 229, 0.25) 50%,
-    rgba(30, 41, 59, 0.85) 70%,
+    rgba(30, 41, 59, 0.85) 25%,
+    rgba(99, 102, 241, 0.3) 50%,
+    rgba(30, 41, 59, 0.85) 75%,
     rgba(15, 23, 42, 0.95) 100%
   );
   background-size: 200% 100%;
-  animation: shimmer-glitter 2.5s infinite linear;
+  animation: shimmer-glitter 2s infinite linear;
 }
 
 .copilot-sparkle-layer {
@@ -136,11 +151,11 @@
 
 .copilot-sparkle {
   position: absolute;
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #ffffff;
-  box-shadow: 0 0 8px #ec4899, 0 0 16px #8b5cf6;
-  animation: float-sparkle 1.8s infinite ease-out;
+  box-shadow: 0 0 10px #ec4899, 0 0 20px #8b5cf6, 0 0 30px #3b82f6;
+  animation: float-sparkle 1.5s infinite ease-out;
 }
 

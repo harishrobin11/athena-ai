@@ -75,6 +75,7 @@ async def supervisor_node(state: AthenaAgentState) -> Dict[str, Any]:
 async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     from app.rag.retriever import Retriever
     from app.memory.conversation_vector_store import ConversationVectorStore
+    from app.api.routes import document_service
     retriever = Retriever()
     conv_store = ConversationVectorStore()
     
@@ -106,7 +107,17 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
             latest_pdf = max(all_pdfs, key=os.path.getmtime)
             selected_docs = [os.path.basename(latest_pdf)]
 
+    docs = []
+
+    # Instant Fast-Path 1: Check in-memory document text cache (0ms delay)
     if selected_docs:
+        for doc_name in selected_docs:
+            cached_text = document_service.get_cached_document_text(doc_name)
+            if cached_text:
+                docs.append(Document(page_content=cached_text, metadata={"filename": doc_name, "source": "in_memory_cache"}))
+                print(f"[RAG WORKER] Loaded fast in-memory cache context for: {doc_name}")
+
+    if not docs and selected_docs:
         filter_metadata = {
             "$and": [
                 {"user_id": filter_user_id},
@@ -114,14 +125,22 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
             ]
         }
 
-    docs = retriever.retrieve(
-        query=user_query,
-        dept_id=state.get("department_boundary", "GENERAL"),
-        top_k=5,
-        filter_metadata=filter_metadata,
-        use_hybrid=True
-    )
-    
+        docs = retriever.retrieve(
+            query=user_query,
+            dept_id=state.get("department_boundary", "GENERAL"),
+            top_k=5,
+            filter_metadata=filter_metadata,
+            use_hybrid=True
+        )
+    elif not docs:
+        docs = retriever.retrieve(
+            query=user_query,
+            dept_id=state.get("department_boundary", "GENERAL"),
+            top_k=5,
+            filter_metadata={"user_id": filter_user_id},
+            use_hybrid=True
+        )
+
     # Fallback 1: Try general vector retrieval without user_id filter
     if not docs:
         docs = retriever.retrieve(
@@ -132,7 +151,7 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
             use_hybrid=True
         )
 
-    # Fallback 2: Direct multi-path disk search & full-text extraction
+    # Fallback 2: Direct multi-path disk search & fast full-text extraction
     if not docs and selected_docs:
         target_name = selected_docs[0]
         possible_paths = [
@@ -147,6 +166,7 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
                     loaded_docs = load_pdf(p)
                     if loaded_docs:
                         docs = loaded_docs
+                        document_service.cache_document_text(target_name, loaded_docs, user_id=filter_user_id)
                         print(f"[RAG WORKER] Successfully loaded {len(docs)} pages from disk file: {p}")
                         break
                 except Exception as ex:
@@ -163,10 +183,8 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     # Sprint 14: Conversation Intelligence - Fetch & Rank Memory
     past_conversations = []
     try:
-        conv_docs = conv_store.search_messages(query=user_query, user_id=str(state["user_id"]), k=10)
-        # Rank by recency (timestamp string ISO parsing not strictly necessary if ISO formatted, direct string sort works, but let's be safe)
-        conv_docs.sort(key=lambda d: d.metadata.get("timestamp", ""), reverse=True)
-        past_conversations = conv_docs[:5] # Keep the top 5 most recent matching messages
+        conv_docs = conv_store.search_messages(query=user_query, user_id=str(state["user_id"]), k=5)
+        past_conversations = conv_docs
     except Exception as e:
         print(f"[RAG WORKER] Error retrieving past conversations: {e}")
         
@@ -311,6 +329,7 @@ async def research_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
 async def document_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     from app.tools.registry import execute_tool
     from langchain_core.messages import SystemMessage, HumanMessage
+    import re
     
     user_query = ""
     for msg in reversed(state.get("messages", [])):
@@ -318,13 +337,25 @@ async def document_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
             user_query = msg.content
             break
 
-    # Extract filename using LLM
-    extract_prompt = SystemMessage(
-        content="Extract the exact PDF filename the user wants to analyze from the query. Return ONLY the filename (e.g. invoice.pdf). If no filename is found, return 'unknown.pdf'."
-    )
-    extract_query = HumanMessage(content=user_query)
-    filename_response = await azure_llm.ainvoke([extract_prompt, extract_query])
-    filename = filename_response.content.strip()
+    selected_docs = state.get("context_metadata", {}).get("selected_documents", [])
+    filename = ""
+
+    if selected_docs and len(selected_docs) > 0:
+        filename = selected_docs[0]
+    else:
+        # Fast regex match for file extensions
+        match = re.search(r'[\w\-. ]+\.(pdf|png|jpg|jpeg|csv|txt)', user_query, re.IGNORECASE)
+        if match:
+            filename = match.group(0).strip()
+
+    # Fallback to LLM extraction only if filename remains unresolved
+    if not filename:
+        extract_prompt = SystemMessage(
+            content="Extract the exact PDF filename the user wants to analyze from the query. Return ONLY the filename (e.g. invoice.pdf). If no filename is found, return 'unknown.pdf'."
+        )
+        extract_query = HumanMessage(content=user_query)
+        filename_response = await azure_llm.ainvoke([extract_prompt, extract_query])
+        filename = filename_response.content.strip()
 
     print("[DOCUMENT WORKER] Processing document:", filename)
     doc_result = execute_tool("analyze_document_layout", filename)

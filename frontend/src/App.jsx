@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Sidebar from './components/Sidebar'
+import ChatSidebar from './components/ChatSidebar'
 import ChatInterface from './components/ChatInterface'
 import ClassifierPanel from './components/ClassifierPanel'
 import WorkflowBuilder from './components/WorkflowBuilder'
@@ -16,6 +17,19 @@ function App() {
   const [user, setUser] = useState(null)
   const [isAuthOpen, setIsAuthOpen] = useState(false)
 
+  // Chat sessions state with local storage persistence
+  const [chatSessions, setChatSessions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('athena_chat_sessions')
+      return saved ? JSON.parse(saved) : [
+        { id: 'sess_1', title: 'Enterprise Knowledge Query', messages: [] }
+      ]
+    } catch(e) {
+      return [{ id: 'sess_1', title: 'Enterprise Knowledge Query', messages: [] }]
+    }
+  })
+  const [currentSessionId, setCurrentSessionId] = useState(() => chatSessions[0]?.id || 'sess_1')
+
   useEffect(() => {
     const savedUser = localStorage.getItem('athena_user')
     if (savedUser) {
@@ -25,8 +39,86 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('athena_chat_sessions', JSON.stringify(chatSessions))
+    } catch(e) {}
+  }, [chatSessions])
+
   const handleAuthSuccess = (userData) => {
     setUser(userData)
+  }
+
+  const handleNewChat = () => {
+    const newId = 'sess_' + Date.now()
+    const newSession = { id: newId, title: 'New Conversation', messages: [] }
+    setChatSessions(prev => [newSession, ...prev])
+    setCurrentSessionId(newId)
+  }
+
+  const handleSelectSession = (id) => {
+    setCurrentSessionId(id)
+  }
+
+  const handleDeleteSession = (id) => {
+    setChatSessions(prev => {
+      const filtered = prev.filter(s => s.id !== id)
+      if (currentSessionId === id && filtered.length > 0) {
+        setCurrentSessionId(filtered[0].id)
+      } else if (filtered.length === 0) {
+        const fallbackId = 'sess_' + Date.now()
+        filtered.push({ id: fallbackId, title: 'New Conversation', messages: [] })
+        setCurrentSessionId(fallbackId)
+      }
+      return filtered
+    })
+  }
+
+  const handleUpdateSessionMessages = (sessionId, messages) => {
+    setChatSessions(prev => prev.map(s => {
+      if (s.id === sessionId) {
+        let title = s.title
+        const firstUserMsg = messages.find(m => m.role === 'user')
+        if (firstUserMsg && (s.title === 'New Conversation' || s.title === 'Enterprise Knowledge Query' || !s.title)) {
+          title = firstUserMsg.content.slice(0, 28) + (firstUserMsg.content.length > 28 ? '...' : '')
+        }
+        return { ...s, title, messages }
+      }
+      return s
+    }))
+  }
+
+  // Full-Screen ChatGPT View Mode
+  if (activeView === 'chat') {
+    const currentSession = chatSessions.find(s => s.id === currentSessionId) || { id: currentSessionId, messages: [] }
+    return (
+      <div className="flex h-screen w-screen overflow-hidden bg-[#0B0F19] text-slate-100 font-sans relative">
+        <ChatSidebar
+          onBackToMain={() => setActiveView('dashboard')}
+          onNewChat={handleNewChat}
+          sessions={chatSessions}
+          currentSessionId={currentSessionId}
+          onSelectSession={handleSelectSession}
+          onDeleteSession={handleDeleteSession}
+          user={user}
+          onOpenAuth={() => setIsAuthOpen(true)}
+        />
+        <main className="flex-1 h-full overflow-hidden relative z-10">
+          <ChatInterface
+            user={user}
+            currentSession={currentSession}
+            onUpdateSessionMessages={handleUpdateSessionMessages}
+            onNewChat={handleNewChat}
+          />
+        </main>
+
+        <AuthModal 
+          isOpen={isAuthOpen}
+          onClose={() => setIsAuthOpen(false)}
+          onAuthSuccess={handleAuthSuccess}
+        />
+      </div>
+    )
   }
 
   return (
@@ -46,7 +138,6 @@ function App() {
         <header className="h-20 flex items-center justify-between px-8 glass-header shrink-0">
           <h1 className="text-2xl font-bold glow-text">
             {activeView === 'dashboard'   && 'Analytics Dashboard'}
-            {activeView === 'chat'        && 'Athena Intelligence'}
             {activeView === 'classifier'  && '🧠 ML Expense Classifier'}
             {activeView === 'workflow'    && 'Workflow Builder'}
             {activeView === 'integration' && 'Enterprise API Hub'}
@@ -68,7 +159,6 @@ function App() {
         
         <div className="flex-1 overflow-auto p-8 scroll-smooth relative z-10">
           {activeView === 'dashboard'   && <Dashboard />}
-          {activeView === 'chat'        && <ChatInterface user={user} />}
           {activeView === 'classifier'  && <ClassifierPanel />}
           {activeView === 'workflow'    && <WorkflowBuilder />}
           {activeView === 'integration' && <IntegrationPanel />}

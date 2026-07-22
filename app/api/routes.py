@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 import pypdf
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, status
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, BackgroundTasks, status
 from fastapi.responses import StreamingResponse, HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -509,6 +509,7 @@ def cancel_chat(generation_id: str):
 # =====================================================================
 @router.post("/upload", response_model=UploadResponse)
 def upload(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...), 
     workspace_id: Optional[int] = Form(None), 
     collection_id: Optional[int] = Form(None),
@@ -568,11 +569,11 @@ def upload(
     except Exception as e:
         print(f"[STORAGE WARNING] S3/MinIO storage upload bypassed: {e}")
 
-
     # Persistent local storage for Document AI and RAG tool resolution
     storage_dir = os.path.join(os.getcwd(), "storage", "documents", f"user_{user_id}")
     os.makedirs(storage_dir, exist_ok=True)
-    with open(os.path.join(storage_dir, file.filename), "wb") as pf:
+    target_disk_path = os.path.join(storage_dir, file.filename)
+    with open(target_disk_path, "wb") as pf:
         pf.write(file_bytes)
 
     root_storage_dir = os.path.join(os.getcwd(), "storage", "documents")
@@ -580,32 +581,19 @@ def upload(
     with open(os.path.join(root_storage_dir, file.filename), "wb") as rpf:
         rpf.write(file_bytes)
 
+    # 2. Fast text loading using PyMuPDF and instant in-memory cache population
+    from app.rag.loader import load_pdf
+    loaded_docs = load_pdf(target_disk_path)
+    document_service.cache_document_text(file.filename, loaded_docs, user_id=user_id)
+    chunks_count = max(1, len(loaded_docs))
 
-    # 2. Write to a temporary file for RAG ingestion (PyPDFLoader needs a real file path)
-    import tempfile
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        tmp.write(file_bytes)
-        tmp_path = tmp.name
-
-    try:
-        from app.rag.ocr_engine import ocr_engine
-        # Process images via OCR
-        is_image = file.content_type in ["image/jpeg", "image/png", "image/tiff"]
-        
-        if is_image and ocr_engine.client:
-            ocr_result = ocr_engine.analyze_invoice(file_bytes)
-            if ocr_result:
-                text_content = ocr_result["content"]
-                # For images, we write the extracted OCR text to a tmp .txt file for standard RAG ingestion
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w") as tmp_txt:
-                    tmp_txt.write(text_content)
-                    os.unlink(tmp_path) # Clean up original pdf tmp
-                    tmp_path = tmp_txt.name
-                    
-        # Ingest from the temporary local file path
-        chunks = document_service.ingest(tmp_path, user_id=user_id, original_filename=file.filename)
-    finally:
-        os.unlink(tmp_path) # Clean up temp file
+    # Queue full vector store embedding calculation to background_tasks so upload returns immediately
+    background_tasks.add_task(
+        document_service.ingest,
+        pdf_path=target_disk_path,
+        user_id=user_id,
+        original_filename=file.filename
+    )
 
     # 3. Save standard DB tracking metrics (with versioning)
     version = 1
@@ -636,8 +624,7 @@ def upload(
                 doc.tags.extend(found_tags)
                 db.commit()
 
-
-    return UploadResponse(filename=file.filename, chunks=chunks)
+    return UploadResponse(filename=file.filename, chunks=chunks_count)
 
 @router.get("/documents", response_model=DocumentsResponse)
 def get_documents_endpoint(current_user=Depends(get_current_user), workspace_id: int | None = None):
