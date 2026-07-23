@@ -165,7 +165,8 @@ def login(request: LoginRequest):
         refresh_token=refresh_token,
         token_type="bearer", 
         department=user_department, 
-        role=granted_role
+        role=granted_role,
+        email=user[2] if len(user) > 2 else "user@athena.local"
     )
 
 @router.post("/refresh", response_model=RefreshResponse)

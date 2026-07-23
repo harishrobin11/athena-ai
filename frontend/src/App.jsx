@@ -16,6 +16,7 @@ function App() {
   const [activeView, setActiveView] = useState('dashboard')
   const [user, setUser] = useState(null)
   const [isAuthOpen, setIsAuthOpen] = useState(false)
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
 
   // Chat sessions state with local storage persistence
   const [chatSessions, setChatSessions] = useState(() => {
@@ -47,6 +48,11 @@ function App() {
 
   const handleAuthSuccess = (userData) => {
     setUser(userData)
+  }
+
+  const handleSignOut = () => {
+    localStorage.removeItem('athena_user')
+    setUser(null)
   }
 
   const handleNewChat = () => {
@@ -102,6 +108,7 @@ function App() {
           onDeleteSession={handleDeleteSession}
           user={user}
           onOpenAuth={() => setIsAuthOpen(true)}
+          onSignOut={handleSignOut}
         />
         <main className="flex-1 h-full overflow-hidden relative z-10">
           <ChatInterface
@@ -132,10 +139,11 @@ function App() {
         setActiveView={setActiveView} 
         user={user}
         onOpenAuth={() => setIsAuthOpen(true)}
+        onSignOut={handleSignOut}
       />
       
       <main className="flex-1 flex flex-col h-full bg-transparent border-l border-white/5 overflow-hidden relative z-10">
-        <header className="h-20 flex items-center justify-between px-8 glass-header shrink-0">
+        <header className="h-20 flex items-center justify-between px-8 glass-header shrink-0 relative z-30">
           <h1 className="text-2xl font-bold glow-text">
             {activeView === 'dashboard'   && 'Analytics Dashboard'}
             {activeView === 'classifier'  && '🧠 ML Expense Classifier'}
@@ -146,13 +154,81 @@ function App() {
             {activeView === 'settings'   && '⚙️ Settings'}
           </h1>
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setIsAuthOpen(true)}
-              className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-semibold transition-colors flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-              {user ? `Account (${user.username})` : 'Register / Login'}
-            </button>
+            {user ? (
+              <div className="relative">
+                <button 
+                  onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                  className="px-3.5 py-2 bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/60 rounded-xl text-xs font-semibold transition-all flex items-center gap-2.5 shadow-md active:scale-95"
+                >
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shadow-inner">
+                    {user.username ? user.username.substring(0, 2).toUpperCase() : 'AD'}
+                  </div>
+                  <span className="font-bold text-slate-100">{user.username}</span>
+                  <span className="text-[10px] bg-indigo-500/20 border border-indigo-500/30 px-1.5 py-0.5 rounded text-indigo-300 uppercase font-mono">{user.department || 'FINANCE'}</span>
+                  <svg className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isUserDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {isUserDropdownOpen && (
+                  <>
+                    {/* Backdrop to close dropdown on click outside */}
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setIsUserDropdownOpen(false)} 
+                    />
+
+                    {/* Account Dropdown Panel */}
+                    <div className="absolute right-0 top-full mt-2.5 w-72 bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl overflow-hidden p-4 z-50 animate-fadeIn text-slate-100">
+                      {/* User Profile Header */}
+                      <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-indigo-500/20 shrink-0">
+                          {user.username ? user.username.substring(0, 2).toUpperCase() : 'AD'}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-bold text-white truncate">{user.username}</h4>
+                          <p className="text-xs text-indigo-400 font-medium truncate mt-0.5">{user.email || `${user.username}@athena.local`}</p>
+                        </div>
+                      </div>
+
+                      {/* Details Badge Group */}
+                      <div className="py-3 space-y-2 border-b border-slate-800 text-xs">
+                        <div className="flex items-center justify-between text-slate-400">
+                          <span>Department</span>
+                          <span className="font-semibold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20">{user.department || 'FINANCE'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-slate-400">
+                          <span>Access Role</span>
+                          <span className="font-semibold text-emerald-400 uppercase font-mono">{user.role || 'ANALYST'}</span>
+                        </div>
+                      </div>
+
+                      {/* Sign Out Action Button */}
+                      <button
+                        onClick={() => {
+                          setIsUserDropdownOpen(false)
+                          handleSignOut()
+                        }}
+                        className="w-full mt-3 py-2.5 px-3 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        Sign Out
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <button 
+                onClick={() => setIsAuthOpen(true)}
+                className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-semibold transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+                Register / Sign In
+              </button>
+            )}
             <NotificationBell />
           </div>
         </header>

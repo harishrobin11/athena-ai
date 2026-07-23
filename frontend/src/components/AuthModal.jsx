@@ -9,6 +9,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab =
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   if (!isOpen) return null
 
@@ -36,10 +37,18 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab =
         })
       })
 
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         let errMessage = 'Registration failed'
-        if (Array.isArray(data.detail)) {
+        if (data.error) {
+          if (Array.isArray(data.error.details)) {
+            errMessage = data.error.details.map(d => `${d.field ? d.field + ': ' : ''}${d.message}`).join(', ')
+          } else if (typeof data.error.message === 'string') {
+            errMessage = data.error.message
+          } else if (typeof data.error === 'string') {
+            errMessage = data.error
+          }
+        } else if (Array.isArray(data.detail)) {
           errMessage = data.detail.map(d => `${d.loc ? d.loc.join('.') : ''}: ${d.msg}`).join(', ')
         } else if (typeof data.detail === 'string') {
           errMessage = data.detail
@@ -68,13 +77,20 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab =
         })
       })
 
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(data.detail || 'Login failed')
+        let errMessage = 'Login failed'
+        if (data.error && typeof data.error.message === 'string') {
+          errMessage = data.error.message
+        } else if (typeof data.detail === 'string') {
+          errMessage = data.detail
+        }
+        throw new Error(errMessage)
       }
 
       const userData = {
         username: user,
+        email: data.email || (email ? email : `${user}@athena.local`),
         token: data.access_token,
         department: data.department || 'FINANCE',
         role: data.role || 'analyst'
@@ -123,14 +139,26 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab =
         <div className="grid grid-cols-2 p-1 bg-slate-950 rounded-xl mb-6 border border-slate-800">
           <button 
             type="button"
-            onClick={() => { setIsRegister(false); setError(''); setSuccess('') }}
+            onClick={() => { 
+              setIsRegister(false); 
+              setError(''); 
+              setSuccess(''); 
+              setPassword('');
+              setIsPassReadOnly(true);
+            }}
             className={`py-2 text-xs font-semibold rounded-lg transition-all ${!isRegister ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
           >
             Sign In
           </button>
           <button 
             type="button"
-            onClick={() => { setIsRegister(true); setError(''); setSuccess('') }}
+            onClick={() => { 
+              setIsRegister(true); 
+              setError(''); 
+              setSuccess(''); 
+              setPassword('');
+              setIsPassReadOnly(true);
+            }}
             className={`py-2 text-xs font-semibold rounded-lg transition-all ${isRegister ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
           >
             Register New Account
@@ -153,12 +181,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab =
         )}
 
         {/* Form */}
-        <form onSubmit={isRegister ? handleRegister : handleLogin} className="space-y-4">
+        <form onSubmit={isRegister ? handleRegister : handleLogin} className="space-y-4" autoComplete="off">
+          {/* Dummy hidden inputs to trap browser autofill heuristics */}
+          <input type="text" name="fake_user" style={{ display: 'none' }} tabIndex={-1} />
+          <input type="password" name="fake_pass" style={{ display: 'none' }} tabIndex={-1} />
+
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">Username</label>
             <input 
               type="text" 
               required
+              autoComplete="off"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="e.g. john_doe"
@@ -172,6 +205,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab =
               <input 
                 type="email" 
                 required
+                autoComplete="off"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="john@company.com"
@@ -182,14 +216,33 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab =
 
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">Password</label>
-            <input 
-              type="password" 
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={isRegister ? "Minimum 8 characters" : "Enter password"}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
-            />
+            <div className="relative">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                required
+                autoComplete="off"
+                name="user_auth_password_input"
+                data-1p-ignore
+                data-lpignore="true"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={isRegister ? "Minimum 8 characters" : "Enter password"}
+                style={{ WebkitTextSecurity: showPassword ? 'none' : 'disc' }}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 pr-10 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors p-1"
+                title={showPassword ? "Hide Password" : "Show Password"}
+              >
+                {showPassword ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a10.017 10.017 0 013.122-.563c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m-1.977 1.977l-12-12"></path></svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                )}
+              </button>
+            </div>
           </div>
 
           {isRegister && (

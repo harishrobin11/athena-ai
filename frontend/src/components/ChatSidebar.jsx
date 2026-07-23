@@ -8,11 +8,12 @@ export default function ChatSidebar({
   onSelectSession, 
   onDeleteSession,
   user,
-  onOpenAuth
+  onOpenAuth,
+  onSignOut
 }) {
   const userInitials = user?.username ? user.username.substring(0, 2).toUpperCase() : 'AD'
-  const userName = user?.username || 'Admin User'
-  const userRole = user?.role ? `${user.department} • ${user.role}` : 'Enterprise Admin'
+  const userName = user?.username || 'Guest User'
+  const userRole = user?.role ? `${user.department} • ${user.role}` : 'Click to Sign In'
 
   return (
     <div className="w-72 h-full bg-[#090D16] border-r border-slate-800/60 flex flex-col p-3 text-slate-200 shrink-0 select-none z-30">
@@ -113,7 +114,7 @@ export default function ChatSidebar({
           className="w-full py-1.5 px-3 bg-slate-800/50 hover:bg-slate-800 text-slate-300 border border-slate-700/50 rounded-xl text-[11px] font-semibold transition-colors flex items-center justify-center gap-1.5"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-          Account & Preferences
+          {user ? 'Account Details' : 'Sign In / Register'}
         </button>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React from 'react'
 
-export default function Sidebar({ activeView, setActiveView, user, onOpenAuth }) {
+export default function Sidebar({ activeView, setActiveView, user, onOpenAuth, onSignOut }) {
   const navItems = [
     { id: 'dashboard',   label: 'Dashboard',       icon: '📊' },
     { id: 'chat',        label: 'Chat Interface',   icon: '💬' },
@@ -13,8 +13,8 @@ export default function Sidebar({ activeView, setActiveView, user, onOpenAuth })
   ]
 
   const userInitials = user?.username ? user.username.substring(0, 2).toUpperCase() : 'AD'
-  const userName = user?.username || 'Admin User'
-  const userRole = user?.role ? `${user.department} • ${user.role}` : 'System Administrator'
+  const userName = user?.username || 'Guest / Unauthenticated'
+  const userRole = user?.role ? `${user.department} • ${user.role}` : 'Click to Sign In'
 
   return (
     <div className="w-72 h-full bg-[#0B0F19]/80 backdrop-blur-2xl flex flex-col p-4 pb-4 shrink-0 relative z-20">
@@ -58,10 +58,10 @@ export default function Sidebar({ activeView, setActiveView, user, onOpenAuth })
 
         <button 
           onClick={onOpenAuth}
-          className="w-full mt-2 py-2 px-3 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
+          className="w-full mt-1 py-2 px-3 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
         >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-          Register / Switch User
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+          {user ? 'Account Details' : 'Sign In / Register'}
         </button>
 
         <div className="mt-1 flex items-center justify-between px-1 pt-1 border-t border-white/5">

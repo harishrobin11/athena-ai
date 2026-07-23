@@ -128,9 +128,9 @@ class LoginResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str
-    # NEW: Passes clearance context directly back to the Streamlit UI state
     department: str
     role: str = "analyst"
+    email: str | None = None
 
 class RefreshRequest(BaseModel):
     refresh_token: str
