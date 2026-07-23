@@ -413,53 +413,91 @@ async def document_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
         if img_path and os.path.exists(img_path):
             try:
                 with open(img_path, "rb") as f:
-                    img_b64 = base64.b64encode(f.read()).decode("utf-8")
-                print(f"[DOCUMENT WORKER] Running Moondream vision analysis on {img_path}...")
-                vision_res = ollama.chat(
-                    model="moondream:latest",
-                    messages=[{
-                        "role": "user",
-                        "content": user_query or "Describe this image in detail.",
-                        "images": [img_b64]
-                    }]
-                )
-                vision_text = vision_res.message.content if hasattr(vision_res, 'message') else str(vision_res.get("message", {}).get("content", ""))
-                context_msg = AIMessage(
-                    content=f"[Worker Result]: Vision Image Analysis for '{filename}':\n\n{vision_text}"
-                )
-                return {"messages": [context_msg], "next_step": "supervisor"}
-            except Exception as ve:
-                print(f"[DOCUMENT WORKER] Vision model execution failed: {ve}")
+                    img_bytes = f.read()
+                    img_b64 = base64.b64encode(img_bytes).decode("utf-8")
 
-            # Local OCR Text Extraction Fallback for Images
-            ocr_text = ""
-            try:
-                from PIL import Image
-                import pytesseract
-                img = Image.open(img_path)
-                ocr_text = pytesseract.image_to_string(img).strip()
-            except Exception as oe:
-                print(f"[DOCUMENT WORKER] Pytesseract OCR skipped: {oe}")
-
-            if not ocr_text:
+                # Method 1: Multimodal LLM Vision API invocation
                 try:
-                    import fitz
-                    doc = fitz.open(img_path)
-                    for page in doc:
-                        ocr_text += page.get_text("text")
-                    ocr_text = ocr_text.strip()
-                except Exception:
-                    pass
+                    mime_type = "image/png" if filename.lower().endswith(".png") else "image/jpeg"
+                    vision_prompt = user_query or "Describe this image in detail, listing all key objects, colors, labels, and elements visible."
+                    mm_msg = HumanMessage(content=[
+                        {"type": "text", "text": vision_prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{img_b64}"}}
+                    ])
+                    vision_resp = await azure_llm.ainvoke([mm_msg])
+                    vision_text = getattr(vision_resp, "content", "").strip()
+                    if vision_text and not any(kw in vision_text.lower() for kw in ["cannot process", "unsupported", "cannot view"]):
+                        print(f"[DOCUMENT WORKER] Multimodal LLM vision analysis succeeded for {filename}")
+                        context_msg = AIMessage(content=f"[Worker Result]: Vision Image Analysis for '{filename}':\n\n{vision_text}")
+                        return {"messages": [context_msg], "next_step": "supervisor"}
+                except Exception as mm_err:
+                    print(f"[DOCUMENT WORKER] Multimodal LLM vision skipped: {mm_err}")
 
-            if ocr_text:
-                context_msg = AIMessage(
-                    content=f"[Worker Result]: Image Content & Text Analysis for '{filename}':\n\n{ocr_text}"
-                )
-            else:
-                context_msg = AIMessage(
-                    content=f"[Worker Result]: Image attachment '{filename}' received. Grounded visual diagram / specification content indexed."
-                )
-            return {"messages": [context_msg], "next_step": "supervisor"}
+                # Method 2: Ollama local vision model
+                try:
+                    print(f"[DOCUMENT WORKER] Running Moondream vision analysis on {img_path}...")
+                    vision_res = ollama.chat(
+                        model="moondream:latest",
+                        messages=[{
+                            "role": "user",
+                            "content": user_query or "Describe this image in detail.",
+                            "images": [img_b64]
+                        }]
+                    )
+                    vision_text = vision_res.message.content if hasattr(vision_res, 'message') else str(vision_res.get("message", {}).get("content", ""))
+                    if vision_text and vision_text.strip():
+                        context_msg = AIMessage(content=f"[Worker Result]: Vision Image Analysis for '{filename}':\n\n{vision_text.strip()}")
+                        return {"messages": [context_msg], "next_step": "supervisor"}
+                except Exception as ve:
+                    print(f"[DOCUMENT WORKER] Ollama vision model execution failed: {ve}")
+
+                # Method 3: Local OCR Text Extraction Fallback for Images
+                ocr_text = ""
+                try:
+                    from PIL import Image
+                    import pytesseract
+                    img = Image.open(img_path)
+                    ocr_text = pytesseract.image_to_string(img).strip()
+                except Exception as oe:
+                    print(f"[DOCUMENT WORKER] Pytesseract OCR skipped: {oe}")
+
+                if not ocr_text:
+                    try:
+                        import fitz
+                        doc = fitz.open(img_path)
+                        for page in doc:
+                            ocr_text += page.get_text("text")
+                        ocr_text = ocr_text.strip()
+                    except Exception:
+                        pass
+
+                # Method 4: PIL Visual Property & Color Metadata Analysis Fallback
+                img_desc = ""
+                try:
+                    from PIL import Image
+                    with Image.open(img_path) as pimg:
+                        w, h = pimg.size
+                        fmt = pimg.format or "JPEG"
+                        mode = pimg.mode or "RGB"
+                        img_desc = f"Image File: {filename} ({w}x{h} pixels, {fmt} format, {mode} color mode)."
+                        try:
+                            from app.multimodal.image_service import detect_dominant_color
+                            dom_col = detect_dominant_color(img_path)
+                            img_desc += f" Dominant visual color theme: {dom_col}."
+                        except Exception:
+                            pass
+                except Exception:
+                    img_desc = f"Image File: {filename}."
+
+                if ocr_text:
+                    full_analysis = f"{img_desc}\n\n[Extracted Text & Diagram Labels]:\n{ocr_text}"
+                else:
+                    full_analysis = f"{img_desc}\n\nVisual scenery/graphic asset uploaded without embedded OCR text labels."
+
+                context_msg = AIMessage(content=f"[Worker Result]: Image Visual Analysis for '{filename}':\n\n{full_analysis}")
+                return {"messages": [context_msg], "next_step": "supervisor"}
+            except Exception as ex_img:
+                print(f"[DOCUMENT WORKER] Image processing exception: {ex_img}")
     
     sys_prompt = SystemMessage(
         content="You are the Athena Document Agent. Your job is to synthesize raw extracted PDF layout and table data into a clean, human-readable report. You are operating in a fully authorized enterprise environment."
