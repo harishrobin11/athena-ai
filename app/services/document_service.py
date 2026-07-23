@@ -15,19 +15,58 @@ class DocumentService:
         return self.store
 
     def cache_document_text(self, filename: str, documents: list, user_id: int = None):
-        """Caches raw loaded documents in memory for ultra-fast instant RAG lookup."""
+        """Caches raw loaded documents and chunked representations in memory for ultra-fast instant RAG lookup."""
         full_text = "\n\n".join([doc.page_content for doc in documents if doc.page_content])
+        chunks = self.splitter.split(documents) if documents else []
         self._doc_cache[filename] = {
             "text": full_text,
             "documents": documents,
+            "chunks": chunks,
             "user_id": user_id
         }
 
-    def get_cached_document_text(self, filename: str) -> str:
-        """Retrieves cached document text if present."""
-        if filename in self._doc_cache:
-            return self._doc_cache[filename]["text"]
-        return ""
+    def get_cached_document_chunks(self, filename: str, query: str = "", top_k: int = 5) -> list:
+        """Retrieves top matching cached document chunks for a query instead of the whole file."""
+        if filename not in self._doc_cache:
+            return []
+        
+        entry = self._doc_cache[filename]
+        chunks = entry.get("chunks", [])
+        if not chunks:
+            chunks = entry.get("documents", [])
+            
+        if not chunks:
+            return []
+
+        query_clean = (query or "").strip().lower()
+        if not query_clean or any(kw in query_clean for kw in ["full text", "entire document", "read full", "whole pdf", "all content"]):
+            return chunks
+
+        query_words = [w for w in query_clean.split() if len(w) > 2]
+        if not query_words:
+            query_words = query_clean.split()
+
+        scored = []
+        for chunk in chunks:
+            content = getattr(chunk, "page_content", str(chunk)).lower()
+            score = sum(content.count(w) for w in query_words)
+            scored.append((score, chunk))
+            
+        scored.sort(key=lambda x: x[0], reverse=True)
+        top_matches = [item[1] for item in scored if item[0] > 0][:top_k]
+        return top_matches if top_matches else chunks[:top_k]
+
+    def get_cached_document_text(self, filename: str, query: str = None) -> str:
+        """Retrieves cached document text. If query is provided, returns targeted top matching chunks."""
+        if filename not in self._doc_cache:
+            return ""
+        
+        if query:
+            matched = self.get_cached_document_chunks(filename, query=query, top_k=5)
+            if matched:
+                return "\n\n".join([getattr(c, "page_content", str(c)) for c in matched])
+                
+        return self._doc_cache[filename]["text"]
 
     def ingest(
         self,

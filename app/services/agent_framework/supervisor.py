@@ -112,13 +112,13 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
 
     docs = []
 
-    # Instant Fast-Path 1: Check in-memory document text cache (0ms delay)
+    # Instant Fast-Path 1: Check in-memory document text cache for query-relevant chunks (0ms delay)
     if selected_docs:
         for doc_name in selected_docs:
-            cached_text = document_service.get_cached_document_text(doc_name)
-            if cached_text:
-                docs.append(Document(page_content=cached_text, metadata={"filename": doc_name, "source": "in_memory_cache"}))
-                print(f"[RAG WORKER] Loaded fast in-memory cache context for: {doc_name}")
+            cached_chunks = document_service.get_cached_document_chunks(doc_name, query=user_query, top_k=5)
+            if cached_chunks:
+                docs.extend(cached_chunks)
+                print(f"[RAG WORKER] Loaded {len(cached_chunks)} targeted in-memory chunks for: {doc_name}")
 
     if not docs and selected_docs:
         filter_metadata = {
@@ -154,7 +154,7 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
             use_hybrid=True
         )
 
-    # Fallback 2: Direct multi-path disk search & fast full-text extraction
+    # Fallback 2: Direct multi-path disk search & fast chunk extraction
     if not docs and selected_docs:
         target_name = selected_docs[0]
         possible_paths = [
@@ -168,9 +168,9 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
                 try:
                     loaded_docs = load_pdf(p)
                     if loaded_docs:
-                        docs = loaded_docs
                         document_service.cache_document_text(target_name, loaded_docs, user_id=filter_user_id)
-                        print(f"[RAG WORKER] Successfully loaded {len(docs)} pages from disk file: {p}")
+                        docs = document_service.get_cached_document_chunks(target_name, query=user_query, top_k=5)
+                        print(f"[RAG WORKER] Successfully loaded {len(docs)} targeted chunks from disk file: {p}")
                         break
                 except Exception as ex:
                     print(f"[RAG WORKER] Direct file load failed for {p}: {ex}")
@@ -191,7 +191,10 @@ async def rag_worker_node(state: AthenaAgentState) -> Dict[str, Any]:
     except Exception as e:
         print(f"[RAG WORKER] Error retrieving past conversations: {e}")
         
-    doc_context = "\n\n".join([d.page_content for d in docs]) if docs else ""
+    doc_context = "\n\n".join([
+        f"[Source: {d.metadata.get('filename', d.metadata.get('source', 'document'))} | Page: {d.metadata.get('page', 1)}]\n{d.page_content}"
+        for d in docs
+    ]) if docs else ""
     
     conv_context = "\n\n".join([
         f"[{d.metadata.get('timestamp', 'Unknown')}] {d.metadata.get('role', 'Unknown').capitalize()}: {d.page_content}" 
@@ -595,7 +598,9 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
             "1. If relevant enterprise documents or worker results are provided above, prioritize them to answer the user query.\n"
             "2. If no specific enterprise documents were found in the vault, answer the user query thoroughly, accurately, and helpfully using your general AI knowledge.\n"
             "3. Do NOT state that you lack information or refuse to answer simply because a document was not uploaded, unless the user explicitly requested a specific missing file.\n"
-            "4. Do not cite internal system tags, worker labels, or metadata."
+            "4. Do not cite internal system tags, worker labels, or metadata.\n"
+            "5. If the user asks for a diagram, flowchart, architecture, visual breakdown, ASCII diagram, or sequence diagram, provide a clean ASCII art box diagram (using +---+ boxes and arrows --->) AND/OR a Mermaid diagram code block (```mermaid ... ```) to visually illustrate the components.\n"
+            "6. When answering from document context, cite targeted section facts or page numbers rather than dumping raw file text."
         )
     )
     

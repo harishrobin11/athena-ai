@@ -37,8 +37,7 @@ def search_documents_tool(
                         "user_id": user_id
                     },
                     {
-                        "source":
-                        f"documents/user_{user_id}/{selected_documents[0]}"
+                        "filename": selected_documents[0]
                     }
                 ]
             }

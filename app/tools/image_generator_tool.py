@@ -31,9 +31,15 @@ def generate_image(tool_input: str, context: dict = None) -> str:
         encoded_prompt = urllib.parse.quote(prompt)
         url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=768&height=768&nologo=true&seed=42"
         resp = requests.get(url, timeout=12)
+        root_storage = os.path.join(os.getcwd(), "storage", "documents")
+        os.makedirs(root_storage, exist_ok=True)
+        root_path = os.path.join(root_storage, filename)
+
         if resp.status_code == 200 and len(resp.content) > 5000:
             with open(file_path, "wb") as f:
                 f.write(resp.content)
+            with open(root_path, "wb") as rf:
+                rf.write(resp.content)
             print(f"[IMAGE GENERATOR] Successfully generated AI image saved to: {file_path}")
             return (
                 f"### Generated Image\n\n"
