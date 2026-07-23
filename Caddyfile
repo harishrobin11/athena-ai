@@ -1,4 +1,4 @@
-:80 {
+{$DOMAIN_NAME:localhost}, :80 {
     # Reverse proxy API requests to FastAPI backend
     handle /api/* {
         reverse_proxy backend:8000
