@@ -672,12 +672,17 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
         db = SessionLocal()
         
         try:
-            uid = int(state.get("user_id", 0))
+            wid = int(state.get("workspace_id", 1))
         except (ValueError, TypeError):
-            uid = 0
+            wid = 1
+
+        try:
+            uid = int(state.get("user_id", 1))
+        except (ValueError, TypeError):
+            uid = 1
             
         token_record = TokenUsage(
-            workspace_id=state.get("workspace_id", 1),
+            workspace_id=wid,
             user_id=uid,
             tokens=total_tokens,
             model=getattr(azure_llm, "model", getattr(azure_llm, "model_name", "azure-openai"))

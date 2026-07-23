@@ -70,6 +70,7 @@ async def agent_chat(
             unique_thread_id = str(uuid.uuid4())
             config = {"configurable": {"thread_id": unique_thread_id}}
             accumulated_tokens = ""
+            final_synthesis_text = ""
 
             async for event in compiled_graph.astream_events(initial_state, config=config, version="v2"):
                 event_type_name = event.get("event", "")
@@ -89,6 +90,16 @@ async def agent_chat(
                         ).model_dump()
                         yield f"data: {json.dumps(payload_dict)}\n\n"
 
+                elif event_type_name == "on_chain_end" and node_name in ["final_synthesis", "rag_worker", "document_worker"]:
+                    output = event.get("data", {}).get("output", {})
+                    if isinstance(output, dict) and "messages" in output and output["messages"]:
+                        last_msg = output["messages"][-1]
+                        msg_content = getattr(last_msg, "content", str(last_msg))
+                        if msg_content and "[Worker Result]" not in msg_content:
+                            final_synthesis_text = msg_content
+                        elif msg_content and not final_synthesis_text:
+                            final_synthesis_text = msg_content
+
                 elif event_type_name == "on_chain_start" and node_name and node_name not in ["LangGraph", "compiled_graph"]:
                     payload_dict = AgentStreamPayload(
                         event_type=AgentEventType.THOUGHT,
@@ -97,11 +108,15 @@ async def agent_chat(
                     ).model_dump()
                     yield f"data: {json.dumps(payload_dict)}\n\n"
 
+            final_output_content = (accumulated_tokens or final_synthesis_text).strip()
+            if not final_output_content:
+                final_output_content = "RAG document analysis complete."
+
             payload_dict = AgentStreamPayload(
                 event_type=AgentEventType.FINAL_RESPONSE,
                 node_name="Orchestrator",
-                content="Graph loop workflow reached completion status.",
-                metadata={"sources": ["finance_policy_2026.pdf", "compliance_audit_v4.db"]}
+                content=final_output_content,
+                metadata={}
             ).model_dump()
             yield f"data: {json.dumps(payload_dict)}\n\n"
 
