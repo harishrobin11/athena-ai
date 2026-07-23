@@ -613,10 +613,18 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
         if isinstance(msg.content, str):
             msg.content = ssn_pattern.sub("[REDACTED PII]", msg.content)
 
-    # Generate the final response using the LLM instance with a 25s timeout
+    # Generate the final response using real-time token streaming with a 25s timeout
     try:
         import asyncio
-        response = await asyncio.wait_for(azure_llm.ainvoke(compact_messages), timeout=25.0)
+        async def _stream_llm():
+            full_text = ""
+            async for chunk in azure_llm.astream(compact_messages):
+                c_text = getattr(chunk, "content", "")
+                if isinstance(c_text, str):
+                    full_text += c_text
+            return AIMessage(content=full_text)
+            
+        response = await asyncio.wait_for(_stream_llm(), timeout=25.0)
         
         # Guard against false-positive safety refusals on benign enterprise queries
         refusal_keywords = [
