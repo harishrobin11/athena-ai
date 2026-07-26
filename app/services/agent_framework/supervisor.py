@@ -659,10 +659,10 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
 
     sys_msg = SystemMessage(
         content=(
-            f"You are Athena AI, an intelligent Enterprise Knowledge Assistant for the {dept} department. {memories_str}\n{facts_context}\n\n"
+            f"You are Athena AI, an intelligent Enterprise Knowledge Assistant for the {dept} department. Current system date and time: {current_time}. {memories_str}\n{facts_context}\n\n"
             "Instructions:\n"
             "1. If relevant enterprise documents or worker results are provided above, prioritize them to answer the user query.\n"
-            "2. If no specific enterprise documents were found in the vault, answer the user query thoroughly, accurately, and helpfully using your general AI knowledge.\n"
+            "2. If no specific enterprise documents were found in the vault, answer the user query thoroughly, accurately, and helpfully using your general AI knowledge (including answering current time/date queries accurately).\n"
             "3. Do NOT state that you lack information or refuse to answer simply because a document was not uploaded, unless the user explicitly requested a specific missing file.\n"
             "4. Do not cite internal system tags, worker labels, or metadata.\n"
             "5. If the user asks for a diagram, flowchart, architecture, visual breakdown, ASCII diagram, or sequence diagram, provide a clean ASCII art box diagram (using +---+ boxes and arrows --->) AND/OR a Mermaid diagram code block (```mermaid ... ```) to visually illustrate the components.\n"

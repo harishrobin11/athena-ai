@@ -19,7 +19,10 @@ async def agent_chat(
     selected_docs = payload.selected_documents or []
     
     # Ultra-Fast Path for casual greetings & direct chat turns
-    is_simple_greeting = any(kw in msg_text for kw in ["hi", "hello", "hey", "hi athena", "hello athena", "good morning", "good afternoon"]) and len(msg_text.split()) <= 4
+    import re
+    clean_msg = re.sub(r'[^\w\s]', '', msg_text).strip().lower()
+    GREETING_PHRASES = {"hi", "hello", "hey", "hi athena", "hello athena", "good morning", "good afternoon", "greetings", "hey athena", "yo", "howdy"}
+    is_simple_greeting = clean_msg in GREETING_PHRASES
 
     import uuid
     async def event_generator():
