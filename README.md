@@ -5,6 +5,9 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/harishrobin11/athena-ai">
+    <img src="https://img.shields.io/badge/Author-Harish%20Robin%20H-orange.svg?style=flat&logo=github" alt="Author: Harish Robin H" />
+  </a>
   <a href="https://github.com/harishrobin11/athena-ai/actions/workflows/ci.yml">
     <img src="https://github.com/harishrobin11/athena-ai/actions/workflows/ci.yml/badge.svg" alt="Continuous Integration Status" />
   </a>
@@ -291,6 +294,14 @@ Athena AI includes out-of-the-box observability:
 
 ---
 
+## 👤 Author & Maintainer
+
+**Harish Robin H**
+- **GitHub**: [@harishrobin11](https://github.com/harishrobin11)
+- **Project Repository**: [harishrobin11/athena-ai](https://github.com/harishrobin11/athena-ai)
+
+---
+
 ## 📜 License
 
 Distributed under the **MIT License**. See `LICENSE` for more information.
@@ -298,5 +309,5 @@ Distributed under the **MIT License**. See `LICENSE` for more information.
 ---
 
 <p align="center">
-  Developed with ❤️ by the <strong>Athena AI Team</strong>
+  Architected & Developed with ❤️ by <strong><a href="https://github.com/harishrobin11">Harish Robin H</a></strong>
 </p>
