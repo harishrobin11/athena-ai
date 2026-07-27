@@ -46,14 +46,12 @@ class ExpenseClassifierTool(BaseTool):
     def _preload_model(self) -> None:
         """Loads the serialized joblib pipeline into memory with safety checks."""
         if not os.path.exists(self.model_path):
-            raise FileNotFoundError(
-                f"[CRITICAL] Serialized model artifact missing at: {self.model_path}. "
-                "Ensure Sprint 19 seed workflow was executed successfully."
-            )
+            self._model = None
+            return
         try:
             self._model = joblib.load(self.model_path)
         except Exception as e:
-            raise RuntimeError(f"Failed to deserialize model checkpoint: {str(e)}")
+            self._model = None
 
     def execute(self, text_line: str) -> Dict[str, Any]:
         """
@@ -61,6 +59,14 @@ class ExpenseClassifierTool(BaseTool):
         """
         if not self._model:
             self._preload_model()
+            if not self._model:
+                return {
+                    "success": False,
+                    "input_text": text_line,
+                    "category": "Unassigned Operations",
+                    "confidence": 0.0,
+                    "error": f"Model artifact missing at {self.model_path}"
+                }
 
         try:
             prediction = self._model.predict([text_line])[0]
