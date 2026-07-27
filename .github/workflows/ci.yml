@@ -23,6 +23,9 @@ jobs:
         pip install -r requirements.txt
         
     - name: Run Pytest
+      env:
+        SECRET_KEY: "ci-secret-key-testing-12345"
+        OPENAI_API_KEY: "ci-openai-api-key-testing"
       run: |
         pytest tests/ -v
 

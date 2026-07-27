@@ -64,28 +64,28 @@
 
 ```mermaid
 graph TD
-    Client["💻 Client / Web Application (React + Vite)"] --> Caddy["🛡️ Reverse Proxy (Caddy / Cloudflared)"]
-    Caddy --> Gateway["⚡ FastAPI Core Engine"]
+    Client["Client / Web Application (React + Vite)"] --> Caddy["Reverse Proxy (Caddy / Cloudflared)"]
+    Caddy --> Gateway["FastAPI Core Engine"]
 
     subgraph "Core Backend Services"
-        Gateway --> Auth["🔑 Security & Auth (JWT/RBAC)"]
-        Gateway --> Router["🔀 Unified API Gateway"]
-        Router --> Orchestrator["🧠 LangGraph Supervisor Orchestrator"]
-        Router --> RAG["📚 Document & Vault Service"]
-        Router --> Tools["🛠️ Agentic ML & Finance Tools"]
+        Gateway --> Auth["Security & Auth (JWT/RBAC)"]
+        Gateway --> Router["Unified API Gateway"]
+        Router --> Orchestrator["LangGraph Supervisor Orchestrator"]
+        Router --> RAG["Document & Vault Service"]
+        Router --> Tools["Agentic ML & Finance Tools"]
     end
 
     subgraph "Data & Memory Layer"
-        Orchestrator --> State["💾 LangGraph State Manager"]
-        RAG --> VectorDB["📌 Vector Store (ChromaDB / Qdrant)"]
-        Gateway --> DB["🗄️ Relational DB (PostgreSQL / SQLite)"]
-        Gateway --> Cache["⚡ Redis Cache & Rate Limiter"]
+        Orchestrator --> State["LangGraph State Manager"]
+        RAG --> VectorDB["Vector Store (ChromaDB / Qdrant)"]
+        Gateway --> DB["Relational DB (PostgreSQL / SQLite)"]
+        Gateway --> Cache["Redis Cache & Rate Limiter"]
     end
 
     subgraph "Async Execution & Observability"
-        Gateway --> Celery["⚙️ Celery Distributed Task Worker"]
-        Celery --> Storage["📦 Cloud Storage (S3 / Azure / Local)"]
-        Gateway --> Metrics["📈 Prometheus & Grafana Telemetry"]
+        Gateway --> Celery["Celery Distributed Task Worker"]
+        Celery --> Storage["Cloud Storage (S3 / Azure / Local)"]
+        Gateway --> Metrics["Prometheus & Grafana Telemetry"]
     end
 ```
 

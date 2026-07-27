@@ -13,11 +13,11 @@ class EnterpriseSettings(BaseSettings):
     """Encapsulates system settings with automatic environment fallback overrides."""
     
     ENVIRONMENT: str = "development"
-    SECRET_KEY: str 
+    SECRET_KEY: str = "athena-dev-secret-key-change-in-production-123456789"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     
     # Secure API Credential Binding Layer
-    OPENAI_API_KEY: str
+    OPENAI_API_KEY: str = "mock-openai-key-for-dev-and-testing"
     
     # FIX: Set to a valid, high-speed OpenAI production model identifier
     TARGET_LLM_MODEL: str = "gpt-4o-mini"
