@@ -1,13 +1,12 @@
+import os
+import pytest
 from app.rag.loader import load_pdf
 from app.rag.splitter import DocumentSplitter
 
-if __name__ == "__main__":
-    docs = load_pdf("documents/sample.pdf")
-    splitter = DocumentSplitter()
-    chunks = splitter.split(docs)
-    print(f"Pages : {len(docs)}")
-    print(f"Chunks: {len(chunks)}")
-    print("\nFirst chunk:\n")
-    print(chunks[0].page_content[:500])
-    print("\nMetadata:")
-    print(chunks[0].metadata)
+def test_document_splitter():
+    sample_pdf = os.path.join("documents", "sample.pdf")
+    if os.path.exists(sample_pdf):
+        docs = load_pdf(sample_pdf)
+        splitter = DocumentSplitter()
+        chunks = splitter.split(docs)
+        assert len(chunks) > 0
