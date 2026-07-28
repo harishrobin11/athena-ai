@@ -6,12 +6,13 @@ from PIL import Image
 import time
 
 
-def detect_dominant_color(image_path: str) -> str:
-    path = Path(image_path)
-    if not path.exists():
-        raise FileNotFoundError(f"Image not found: {image_path}")
+from io import BytesIO
+from app.services.storage_service import storage_service
 
-    with Image.open(path) as img:
+def detect_dominant_color(image_path: str) -> str:
+    file_bytes = storage_service.get_file_bytes("athena-images", image_path)
+
+    with Image.open(BytesIO(file_bytes)) as img:
         img = img.convert("RGB")
         img = img.resize((100, 100))
         pixels = list(img.getdata())
@@ -71,13 +72,8 @@ def analyze_image(prompt: str, image_path: str = None):
     validate_image(image_path)
     print("Image validation passed")
 
-    # Short and effective prompt
-    full_prompt = f"""
-Question: {prompt}
-
-Answer the question in one complete short sentence, based on the image.
-If the question is about colour, respond like: "The colour of the image is red."
-"""
+    # Use the prompt directly. Complex instructions cause the local vision model to output empty strings.
+    full_prompt = prompt
 
     print("Calling ask_vision_llm()")
 
@@ -92,22 +88,19 @@ If the question is about colour, respond like: "The colour of the image is red."
     )
 
     normalized = result.strip()
-    extracted_color = _extract_color_from_text(normalized)
+    is_color_question = "colour" in prompt.lower() or "color" in prompt.lower()
 
-    if extracted_color:
-        normalized = _format_color_sentence(extracted_color)
-    elif "colour" in prompt.lower() or "color" in prompt.lower():
-        print("Vision model returned an invalid colour answer, falling back to dominant image color.")
-        fallback_color = detect_dominant_color(image_path)
-        normalized = _format_color_sentence(fallback_color)
-    elif normalized and normalized.endswith("."):
-        # Keep a well-formed sentence if the model returned one.
-        pass
-    elif normalized:
-        # At least preserve non-empty model output if it is not a colour question.
-        normalized = normalized
+    if is_color_question:
+        extracted_color = _extract_color_from_text(normalized)
+        if extracted_color:
+            normalized = _format_color_sentence(extracted_color)
+        else:
+            print("Vision model returned an invalid colour answer, falling back to dominant image color.")
+            fallback_color = detect_dominant_color(image_path)
+            normalized = _format_color_sentence(fallback_color)
     else:
-        normalized = ""
+        if not normalized:
+            normalized = ""
 
     print("\n" + "=" * 70)
     print("IMAGE SERVICE RESULT")

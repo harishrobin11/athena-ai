@@ -32,7 +32,16 @@ User Message:
     print(response)
 
     try:
-        memories = json.loads(response)
+        # Clean markdown code blocks from the response
+        cleaned_response = response.strip()
+        if cleaned_response.startswith("```json"):
+            cleaned_response = cleaned_response[7:]
+        elif cleaned_response.startswith("```"):
+            cleaned_response = cleaned_response[3:]
+        if cleaned_response.endswith("```"):
+            cleaned_response = cleaned_response[:-3]
+            
+        memories = json.loads(cleaned_response.strip())
 
         # Normalize to list
         if isinstance(memories, dict):

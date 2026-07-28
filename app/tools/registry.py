@@ -1,17 +1,27 @@
+TOOLS = {}
+
+def register_tool(name: str):
+    """Decorator to dynamically register tools into the global registry."""
+    def decorator(func):
+        TOOLS[name] = func
+        return func
+    return decorator
+
+# Import tools to trigger decorator registration
 from .calculator import calculator_tool
 from .document_search import search_documents_tool
 from .conversation_search import search_conversations_tool
 from .search_memory import search_memory
 from .image_tool import execute as analyze_image
+from .document_ai_tool import analyze_document_layout
+from .web_search import web_search_tool
+from .sql_tool import execute_sql_query
+from .python_tool import execute_python_code
+from .api_tool import execute_api_call
+from .schedule_tool import schedule_task
+from .api_hub_tools import slack_tool, jira_tool, salesforce_tool
+from .image_generator_tool import generate_image
 
-
-TOOLS = {
-    "calculator": calculator_tool,
-    "search_documents": search_documents_tool,
-    "search_conversations": search_conversations_tool,
-    "search_memory": search_memory,
-    "analyze_image": analyze_image,
-}
 
 
 def execute_tool(

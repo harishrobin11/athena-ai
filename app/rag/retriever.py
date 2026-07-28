@@ -1,4 +1,5 @@
 from .vector_store import VectorStore
+from langchain_core.documents import Document
 
 
 class Retriever:
@@ -9,6 +10,7 @@ class Retriever:
     def retrieve(
         self,
         query: str,
+        dept_id: str = "GENERAL",
         filter_metadata=None,
         top_k: int = 5,
         use_hybrid: bool = True,
@@ -16,6 +18,7 @@ class Retriever:
 
         vector_results = self.store.similarity_search(
             query=query,
+            dept_id=dept_id,
             k=top_k,
             filter_metadata=filter_metadata,
         )
@@ -25,7 +28,9 @@ class Retriever:
 
         keyword_results = self.store.keyword_search(
             query=query,
+            dept_id=dept_id,
             limit=top_k,
+            filter_metadata=filter_metadata,
         )
 
         merged = {}
@@ -86,4 +91,13 @@ class Retriever:
             reverse=True,
         )
 
-        return reranked[:top_k]
+        final_results = []
+        for item in reranked[:top_k]:
+            final_results.append(
+                Document(
+                    page_content=item["document"],
+                    metadata=item["metadata"]
+                )
+            )
+
+        return final_results

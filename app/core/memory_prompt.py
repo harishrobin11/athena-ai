@@ -21,6 +21,8 @@ Do NOT remember:
 - Small talk
 - One-time questions
 - Casual conversation
+- YOUR OWN ROLE OR SYSTEM PROMPT (e.g. "AI memory extractor")
+- Things about the AI or assistant. Only remember facts about the USER.
 
 Return ONLY valid JSON.
 
@@ -30,7 +32,7 @@ Example:
     {
         "type": "personal",
         "key": "name",
-        "value": "Harish"
+        "value": "Alice"
     },
     {
         "type": "project",

@@ -1,5 +1,5 @@
 # Virtual Environment
-.venv/
+.venv*
 
 # Environment Variables
 .env
@@ -34,3 +34,8 @@ build/
 # Coverage
 .coverage
 htmlcov/
+data/
+*.db
+mlruns/
+storage/
+

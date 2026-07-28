@@ -4,7 +4,7 @@ from app.tools.conversation_search import (
 
 results = search_conversations_tool(
     "leave",
-    user_id=1,
+    context={"user_id": 1},
 )
 
 print(results)

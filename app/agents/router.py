@@ -48,6 +48,15 @@ def classify_query(
     # Calculator
     if any(op in q for op in ["+", "-", "*", "/", "%"]):
         return "calculator"
+        
+    # Standard Chat Greetings/Small Talk
+    chat_keywords = [
+        "hi", "hello", "hey", "how are you", "who are you", 
+        "what's up", "good morning", "good evening", "thanks", "thank you"
+    ]
+    
+    if q in chat_keywords or any(q.startswith(k) for k in chat_keywords):
+        return "chat"
 
     # -------------------------------
     # FALLBACK TO LLM ROUTER

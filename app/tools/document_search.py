@@ -1,6 +1,7 @@
 from ..rag.retriever import Retriever
+from .registry import register_tool
 
-
+@register_tool("search_documents")
 def search_documents_tool(
     tool_input,
     context,
@@ -24,28 +25,30 @@ def search_documents_tool(
 
     retriever = Retriever()
 
-    filter_metadata = {
-        "user_id": user_id
-    }
+    filter_metadata = {}
+    if user_id is not None:
+        filter_metadata["user_id"] = user_id
 
-    if selected_documents:
-
+    if selected_documents and user_id is not None:
         if len(selected_documents) == 1:
-
             filter_metadata = {
                 "$and": [
                     {
                         "user_id": user_id
                     },
                     {
-                        "source":
-                        f"documents/user_{user_id}/{selected_documents[0]}"
+                        "filename": selected_documents[0]
                     }
                 ]
             }
 
+    if not filter_metadata:
+        filter_metadata = None
+
+    dept_id = context.get("dept_id", "GENERAL") if context else "GENERAL"
     docs = retriever.retrieve(
-        query,
+        query=query,
+        dept_id=dept_id,
         filter_metadata=filter_metadata,
     )
 

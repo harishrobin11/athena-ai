@@ -1,0 +1,161 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-[#0B0F19] text-slate-100 antialiased;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-[#111827]/60 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] rounded-2xl;
+  }
+  .glass-header {
+    @apply bg-[#0B0F19]/80 backdrop-blur-lg border-b border-white/5;
+  }
+  .glow-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 drop-shadow-[0_0_15px_rgba(129,140,248,0.3)];
+  }
+}
+
+/* Copilot / ChatGPT Rotating Glittering Border Animation */
+@keyframes rotate-conic {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer-glitter {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes float-sparkle {
+  0% {
+    transform: translateY(0px) scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-28px) scale(1.4);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4), 0 0 40px rgba(236, 72, 153, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(168, 85, 247, 0.8), 0 0 60px rgba(59, 130, 246, 0.6);
+  }
+}
+
+.copilot-prompt-container {
+  position: relative;
+  border-radius: 1.25rem;
+  background: rgba(11, 15, 25, 0.8);
+  backdrop-filter: blur(16px);
+  padding: 2px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.copilot-prompt-container::before {
+  content: '';
+  position: absolute;
+  top: -100%;
+  left: -100%;
+  width: 300%;
+  height: 300%;
+  background: conic-gradient(
+    from 0deg,
+    #6366f1 0%,
+    #a855f7 20%,
+    #ec4899 40%,
+    #3b82f6 60%,
+    #10b981 80%,
+    #6366f1 100%
+  );
+  animation: rotate-conic 6s linear infinite;
+  opacity: 0.3;
+  z-index: 0;
+  transition: opacity 0.4s ease, animation-duration 0.4s ease;
+}
+
+.copilot-prompt-container:focus-within::before {
+  opacity: 0.75;
+  animation-duration: 3.5s;
+}
+
+.copilot-prompt-container.searching {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+
+.copilot-prompt-container.searching::before {
+  opacity: 1;
+  animation-duration: 1.2s;
+  background: conic-gradient(
+    from 0deg,
+    #3b82f6 0%,
+    #8b5cf6 20%,
+    #ec4899 40%,
+    #f43f5e 60%,
+    #06b6d4 80%,
+    #3b82f6 100%
+  );
+  filter: drop-shadow(0 0 16px rgba(236, 72, 153, 0.8));
+}
+
+.copilot-prompt-inner {
+  position: relative;
+  z-index: 2;
+  border-radius: 1.15rem;
+  background: rgba(15, 23, 42, 0.95);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.copilot-prompt-container.searching .copilot-prompt-inner {
+  background: linear-gradient(
+    90deg,
+    rgba(15, 23, 42, 0.95) 0%,
+    rgba(30, 41, 59, 0.85) 25%,
+    rgba(99, 102, 241, 0.3) 50%,
+    rgba(30, 41, 59, 0.85) 75%,
+    rgba(15, 23, 42, 0.95) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-glitter 2s infinite linear;
+}
+
+.copilot-sparkle-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  overflow: hidden;
+}
+
+.copilot-sparkle {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 10px #ec4899, 0 0 20px #8b5cf6, 0 0 30px #3b82f6;
+  animation: float-sparkle 1.5s infinite ease-out;
+}
+

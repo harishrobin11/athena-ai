@@ -2,10 +2,11 @@ from app.rag.vector_store import VectorStore
 
 store = VectorStore()
 
-results = store.db.similarity_search(
+results = store.similarity_search(
     query="what is machine learning",
+    dept_id="GENERAL",
     k=3,
-    filter={
+    filter_metadata={
         "source": "documents/sample.pdf"
     }
 )

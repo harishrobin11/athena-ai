@@ -1,143 +1,150 @@
+"""
+Athena AI - Ollama Model Inference Provider Interface
+Module: app.providers.ollama_provider
+Description: Standardizes client connection frames for local text completions 
+             and multi-modal structural vision loops utilizing the official client library.
+"""
+
 import base64
 from pathlib import Path
-import requests
-from ollama import chat
+from typing import List, Dict, Any, Generator
+import ollama
 
-OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
-OLLAMA_CHAT_URL = "http://127.0.0.1:11434/v1/chat/completions"
-
-TEXT_MODEL = "llama3.2:3b"
+import os
+TEXT_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 VISION_MODEL = "moondream:latest"
 
 
-# --------------------------------------------------
-# TEXT MODEL
-# --------------------------------------------------
+# =====================================================================
+# STANDARD TEXT INFERENCE PIPELINES
+# =====================================================================
 
-def ask_llm(messages):
+def ask_llm(messages: List[Dict[str, Any]]) -> str:
     """
-    Non-streaming text inference.
+    Executes a blocking, non-streaming text completion routine.
     """
-    response = chat(
-        model=TEXT_MODEL,
-        messages=messages,
-        keep_alive="30m",
-    )
+    try:
+        response = ollama.chat(
+            model=TEXT_MODEL,
+            messages=messages,
+            keep_alive="30m",
+        )
+        # Handle library object attribute extraction safely
+        if hasattr(response, 'message'):
+            return response.message.content
+        return response.get('message', {}).get('content', '')
+    except Exception as e:
+        print(f"[OLLAMA ERROR] Synchronous inference failure: {e}")
+        return f"Inference engine execution error: {str(e)}"
 
-    return response["message"]["content"]
 
-
-def stream_llm(messages):
+def stream_llm(messages: List[Dict[str, Any]]) -> Generator[str, None, None]:
     """
-    Streaming text inference.
+    Robust generative token generator tracking local model streams 
+    with dot-attribute object syntax mappings.
     """
+    print(f"Starting Ollama token stream using model target: {TEXT_MODEL}...")
+    
+    try:
+        stream = ollama.chat(
+            model=TEXT_MODEL,
+            messages=messages,
+            stream=True,
+            keep_alive="30m",
+            options={
+                "num_predict": 512,
+                "temperature": 0.7,
+                "num_thread": 4,
+                "num_ctx": 1024,
+            },
+        )
 
-    print("Starting Ollama stream...")
-
-    stream = chat(
-        model=TEXT_MODEL,
-        messages=messages,
-        stream=True,
-        keep_alive="30m",
-        options={
-            "num_predict": 1024,
-            "temperature": 0.7,
-        },
-    )
-
-    for chunk in stream:
-
-        content = chunk["message"]["content"]
-
-        if content:
-            yield content
+        
+        for chunk in stream:
+            # FIX: Safely parse chunk using modern library object attributes
+            if hasattr(chunk, 'message') and chunk.message:
+                content = chunk.message.content
+                if content:
+                    yield content
+            elif isinstance(chunk, dict):
+                content = chunk.get("message", {}).get("content", "")
+                if content:
+                    yield content
+                    
+    except Exception as e:
+        print(f"[OLLAMA CRITICAL] Stream iteration pipeline collapsed: {e}")
+        yield f"\n[Inference Stream Disconnected: {str(e)}]"
 
 
-# --------------------------------------------------
-# VISION MODEL
-# --------------------------------------------------
+# =====================================================================
+# MULTI-MODAL VISION INFERENCE PIPELINES
+# =====================================================================
 
-
+from app.services.storage_service import storage_service
 
 def _load_image_b64(image_path: str) -> str:
-    path = Path(image_path)
-    if not path.exists():
-        raise FileNotFoundError(f"Image not found: {image_path}")
-
-    with open(path, "rb") as f:
-        image_bytes = f.read()
-
-    return base64.b64encode(image_bytes).decode("utf-8")
+    """Safely reads imagery from S3 into standard base64 strings."""
+    # image_path is the object_key (e.g. 1/8f94c67106414680b68e912ac4dd0a6e.jpeg)
+    file_bytes = storage_service.get_file_bytes("athena-images", image_path)
+    return base64.b64encode(file_bytes).decode("utf-8")
 
 
-def ask_vision_llm(
-    prompt: str,
-    image_path: str,
-):
-    print("===== VISION PROVIDER =====")
-
-    image_b64 = _load_image_b64(image_path)
-
-    payload = {
-        "model": VISION_MODEL,
-        "messages": [
-            {
+def ask_vision_llm(prompt: str, image_path: str) -> str:
+    """
+    Evaluates imagery inputs synchronously utilizing native client definitions.
+    """
+    print("===== VISION PROVIDER SYNCHRONOUS INITIATION =====")
+    try:
+        image_b64 = _load_image_b64(image_path)
+        
+        response = ollama.chat(
+            model=VISION_MODEL,
+            messages=[{
                 "role": "user",
                 "content": prompt,
-                "images": [image_b64],
-            }
-        ],
-        "stream": False,
-        "max_tokens": 64,
-        "temperature": 0.0,
-    }
+                "images": [image_b64]
+            }],
+            keep_alive="30m",
+        )
+        
+        if hasattr(response, 'message'):
+            return response.message.content.strip()
+        return response.get('message', {}).get('content', '').strip()
+        
+    except Exception as e:
+        print(f"[OLLAMA VISION ERROR] Static canvas description pipeline failed: {e}")
+        return f"Vision analytics engine failure: {str(e)}"
 
-    print("Sending vision request to Ollama HTTP API")
-    response = requests.post(
-        OLLAMA_CHAT_URL,
-        json=payload,
-        timeout=300,
-    )
-    print("HTTP status:", response.status_code)
-    print("RAW RESPONSE:", response.text[:2000])
-    response.raise_for_status()
 
-    data = response.json()
-    content = ""
-    if isinstance(data, dict):
-        choices = data.get("choices") or []
-        if choices:
-            first = choices[0]
-            message = first.get("message") or {}
-            content = message.get("content") or ""
-
-    print("VISION RESPONSE:", repr(content))
-    return content.strip()
-
-def stream_vision_llm(
-    prompt: str,
-    image_path: str,
-):
-    image_b64 = _load_image_b64(image_path)
-
-    stream = chat(
-        model=VISION_MODEL,
-        messages=[
-            {
+def stream_vision_llm(prompt: str, image_path: str) -> Generator[str, None, None]:
+    """
+    Streams multi-modal vision tokens dynamically for dashboard visualization pipelines.
+    """
+    print(f"Starting Ollama visual token stream using model target: {VISION_MODEL}...")
+    try:
+        image_b64 = _load_image_b64(image_path)
+        
+        stream = ollama.chat(
+            model=VISION_MODEL,
+            messages=[{
                 "role": "user",
                 "content": prompt,
-                "images": [image_b64],
-            }
-        ],
-        stream=True,
-        keep_alive="30m",
-    )
-
-    for chunk in stream:
-        message = chunk.get("message")
-        if not message:
-            continue
-
-        content = message.get("content")
-        if content:
-            yield content
+                "images": [image_b64]
+            }],
+            stream=True,
+            keep_alive="30m",
+        )
+        
+        for chunk in stream:
+            if hasattr(chunk, 'message') and chunk.message:
+                content = chunk.message.content
+                if content:
+                    yield content
+            elif isinstance(chunk, dict):
+                content = chunk.get("message", {}).get("content", "")
+                if content:
+                    yield content
+                    
+    except Exception as e:
+        print(f"[OLLAMA VISION CRITICAL] Multi-modal text stream engine failure: {e}")
+        yield f"\n[Vision Stream Disconnected: {str(e)}]"

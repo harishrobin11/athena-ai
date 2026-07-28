@@ -1,14 +1,10 @@
-from app.memory.database import get_connection
+from app.db.database import SessionLocal
+from app.db.models import User
 
-conn = get_connection()
-cursor = conn.cursor()
-
-cursor.execute("""
-SELECT id, username
-FROM users
-""")
-
-for row in cursor.fetchall():
-    print(row)
-
-conn.close()
+db = SessionLocal()
+try:
+    users = db.query(User).all()
+    for u in users:
+        print(u.id, u.username)
+finally:
+    db.close()

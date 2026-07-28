@@ -1,7 +1,7 @@
 import base64
 import requests
 
-IMAGE = "storage/uploads/91/e7942197896e48a494c49900103f9122.jpeg"
+IMAGE = "app/ui/assets/brain.png"
 
 with open(IMAGE, "rb") as f:
     img = base64.b64encode(f.read()).decode()

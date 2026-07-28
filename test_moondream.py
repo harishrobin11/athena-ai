@@ -7,7 +7,7 @@ response = chat(
             "role": "user",
             "content": "What is the colour of this image?",
             "images": [
-                "storage/uploads/106/bce55e39dea04199839220f475bf3c82.jpeg"
+                "app/ui/assets/brain.png"
             ],
         }
     ],

@@ -1,115 +1,162 @@
-import sqlite3
-from pathlib import Path
-from app.memory.conversation_vector_store import ConversationVectorStore
-from datetime import datetime
 import traceback
-DB_PATH = Path(__file__).parent.parent / "data" / "conversations.db"
-
-
-def get_connection():
-    DB_PATH.parent.mkdir(exist_ok=True)
-    return sqlite3.connect(DB_PATH)
-
+from datetime import datetime
+from app.db.database import get_db, Base, engine
+from app.db.models import User, Conversation, Message, Document, Organization, Workspace, UserRole
+from app.memory.conversation_vector_store import ConversationVectorStore
 
 def init_db():
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS conversations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        title TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-        FOREIGN KEY(user_id)
-        REFERENCES users(id)
-        ON DELETE CASCADE
-    )
-    """)
+    # Automatically create all tables
+    Base.metadata.create_all(bind=engine)
     
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS messages(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        conversation_id INTEGER,
-        role TEXT,
-        content TEXT,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(conversation_id)
-        REFERENCES conversations(id)
-        ON DELETE CASCADE
-    )
-    """)
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS documents (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        filename TEXT NOT NULL,
-        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    # Seed Marketplace & Default User (id=1)
+    db = next(get_db())
+    try:
+        if db.query(User).filter(User.id == 1).first() is None:
+            admin_user = User(id=1, username="admin", email="admin@athena-ai.local", password_hash="admin_hash")
+            db.add(admin_user)
+            db.commit()
 
-        FOREIGN KEY(user_id)
-        REFERENCES users(id)
-        ON DELETE CASCADE
-    )
-    """)
-
-    conn.commit()
-    conn.close()
+        from app.db.models import MarketplaceItem
+        if db.query(MarketplaceItem).count() == 0:
+            items = [
+                MarketplaceItem(name="Financial Analyst", description="Automatically extracts tables and runs regressions on uploaded PDFs.", type="agent", payload='{"icon":":material/trending_up:"}', is_public=1),
+                MarketplaceItem(name="Legal Reviewer", description="Identifies missing clauses and compares contracts against policy.", type="agent", payload='{"icon":":material/gavel:"}', is_public=1),
+                MarketplaceItem(name="Python Coder", description="Code execution sandbox environment for data cleaning and scripts.", type="agent", payload='{"icon":":material/terminal:"}', is_public=1),
+            ]
+            db.add_all(items)
+            db.commit()
+    except Exception as e:
+        print(f"Error seeding database defaults: {e}")
+    finally:
+        db.close()
 
 
-def create_conversation(title, user_id):
-    conn = get_connection()
-    cursor = conn.cursor()
+def create_user(username: str, email: str, hashed_password: str, department: str = 'General'):
+    db = next(get_db())
+    try:
+        # Create the user
+        user = User(username=username, email=email, password_hash=hashed_password)
+        db.add(user)
+        db.flush() # Flush to get user.id
 
-    cursor.execute(
-        """
-        INSERT INTO conversations(title, user_id)
-        VALUES (?, ?)
-        """,
-        (title, user_id),
-    )
+        # Scaffold default Organization and Workspace
+        org = Organization(name=f"{username.capitalize()}'s Org")
+        db.add(org)
+        db.flush()
 
-    conn.commit()
+        workspace = Workspace(name="Default Workspace", organization_id=org.id)
+        db.add(workspace)
+        db.flush()
 
-    conversation_id = cursor.lastrowid
+        # Link user to the org via UserRole
+        role = "admin" if username.lower() == "admin" else "member"
+        user_role = UserRole(user_id=user.id, organization_id=org.id, role=role, department=department)
+        db.add(user_role)
 
-    conn.close()
+        db.commit()
+    finally:
+        db.close()
 
-    return conversation_id
+def get_user_by_username(username: str):
+    db = next(get_db())
+    try:
+        user = db.query(User).filter(User.username == username).first()
+        if user:
+            # Get the user's primary role/department (if they have multiple orgs, just pick first for legacy support)
+            primary_role = db.query(UserRole).filter(UserRole.user_id == user.id).first()
+            department = primary_role.department if primary_role else "GENERAL"
+            
+            # Match the legacy tuple structure: id, username, email, password_hash, department, created_at
+            return (user.id, user.username, user.email, user.password_hash, department, str(user.created_at))
+        return None
+    finally:
+        db.close()
 
+def create_conversation(title, user_id, workspace_id=None):
+    db = next(get_db())
+    try:
+        conv = Conversation(title=title, user_id=user_id, workspace_id=workspace_id)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
+        return conv.id
+    finally:
+        db.close()
+
+def list_conversations(user_id, workspace_id=None):
+    db = next(get_db())
+    try:
+        query = db.query(Conversation).filter(Conversation.user_id == user_id)
+        if workspace_id:
+            query = query.filter(Conversation.workspace_id == workspace_id)
+        convs = query.order_by(Conversation.id.desc()).all()
+        # Returns id, title, created_at
+        return [(c.id, c.title, str(c.created_at)) for c in convs]
+    finally:
+        db.close()
+
+def search_conversations(query_str, user_id, workspace_id=None):
+    db = next(get_db())
+    try:
+        query = db.query(Conversation).filter(
+            Conversation.user_id == user_id, 
+            Conversation.title.like(f"%{query_str}%")
+        )
+        if workspace_id:
+            query = query.filter(Conversation.workspace_id == workspace_id)
+        convs = query.order_by(Conversation.id.desc()).all()
+        return [(c.id, c.title, str(c.created_at)) for c in convs]
+    finally:
+        db.close()
+
+def delete_conversation(conversation_id, user_id):
+    db = next(get_db())
+    try:
+        conv = db.query(Conversation).filter(Conversation.id == conversation_id, Conversation.user_id == user_id).first()
+        if conv:
+            db.delete(conv)
+            db.commit()
+    finally:
+        db.close()
+
+def update_conversation_title(conversation_id, title):
+    db = next(get_db())
+    try:
+        conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+        if conv:
+            conv.title = title
+            db.commit()
+    finally:
+        db.close()
+
+def get_conversation_owner(conversation_id):
+    db = next(get_db())
+    try:
+        conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+        if conv:
+            return (conv.user_id,)
+        return None
+    finally:
+        db.close()
+
+def get_conversation_user_id(conversation_id):
+    owner = get_conversation_owner(conversation_id)
+    return owner[0] if owner else None
 
 def save_message(conversation_id, role, content):
-    conn = get_connection()
-    cursor = conn.cursor()
+    db = next(get_db())
+    try:
+        msg = Message(conversation_id=conversation_id, role=role, content=content)
+        db.add(msg)
+        db.commit()
+    finally:
+        db.close()
 
-    cursor.execute("""
-    INSERT INTO messages(conversation_id, role, content)
-    VALUES(?,?,?)
-    """, (conversation_id, role, content))
-
-    conn.commit()
     try:
         print("Saving message to Chroma...")
-
         user_id = get_conversation_user_id(conversation_id)
-
-        print(f"user_id={user_id}")
-
         if user_id is not None:
             store = ConversationVectorStore()
-
-            print("Store created")
-
             store.add_message(
                 message=content,
                 user_id=user_id,
@@ -117,309 +164,103 @@ def save_message(conversation_id, role, content):
                 role=role,
                 timestamp=datetime.utcnow().isoformat(),
             )
-
-            print("Message embedded successfully")
-
     except Exception as e:
         print("===== Conversation Embedding Error =====")
         traceback.print_exc()
-    conn.close()
-
-
-def load_history(conversation_id, limit=20):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT role, content
-    FROM messages
-    WHERE conversation_id=?
-    ORDER BY id ASC
-    LIMIT ?
-    """, (conversation_id, limit))
-
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    return rows
-
-def list_conversations(user_id):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT id, title, created_at
-    FROM conversations
-    WHERE user_id = ?
-    ORDER BY id DESC
-    """, (user_id,))
-
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    return rows
 
 def get_messages(conversation_id):
-    conn = get_connection()
-    cursor = conn.cursor()
+    db = next(get_db())
+    try:
+        messages = db.query(Message).filter(Message.conversation_id == conversation_id).order_by(Message.id.asc()).all()
+        return [(m.role, m.content) for m in messages]
+    finally:
+        db.close()
 
-    cursor.execute("""
-    SELECT role, content
-    FROM messages
-    WHERE conversation_id=?
-    ORDER BY id ASC
-    """, (conversation_id,))
+def load_history(conversation_id, limit=20):
+    db = next(get_db())
+    try:
+        messages = db.query(Message).filter(Message.conversation_id == conversation_id).order_by(Message.id.asc()).limit(limit).all()
+        return [(m.role, m.content) for m in messages]
+    finally:
+        db.close()
 
-    rows = cursor.fetchall()
+def add_document(user_id, filename, object_key, bucket="athena-documents", workspace_id=None, collection_id=None, department=None, version=1):
+    db = next(get_db())
+    try:
+        doc = Document(
+            user_id=user_id, 
+            filename=filename, 
+            object_key=object_key, 
+            bucket=bucket, 
+            workspace_id=workspace_id,
+            collection_id=collection_id,
+            department=department,
+            version=version
+        )
+        db.add(doc)
+        db.commit()
+        db.refresh(doc)
+        return doc.id
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to record document metadata in DB: {e}")
+        return 1
+    finally:
+        db.close()
 
-    conn.close()
 
-    return rows
+def list_documents(user_id, workspace_id=None):
+    db = next(get_db())
+    try:
+        query = db.query(Document).filter(Document.user_id == user_id)
+        if workspace_id:
+            query = query.filter(Document.workspace_id == workspace_id)
+        docs = query.order_by(Document.id.desc()).all()
+        # Returns id, filename, uploaded_at
+        return [(d.id, d.filename, str(d.uploaded_at)) for d in docs]
+    finally:
+        db.close()
 
-def update_conversation_title(
-    conversation_id,
-    title,
-):
-    conn = get_connection()
-    cursor = conn.cursor()
+def delete_document_by_user(filename, user_id):
+    db = next(get_db())
+    try:
+        doc = db.query(Document).filter(Document.filename == filename, Document.user_id == user_id).first()
+        if doc:
+            db.delete(doc)
+            db.commit()
+            return True
+        return False
+    finally:
+        db.close()
 
-    cursor.execute(
-        """
-        UPDATE conversations
-        SET title=?
-        WHERE id=?
-        """,
-        (
-            title,
-            conversation_id,
-        ),
-    )
+def owns_document(filename, user_id):
+    db = next(get_db())
+    try:
+        doc = db.query(Document).filter(Document.filename == filename, Document.user_id == user_id).first()
+        return doc is not None
+    finally:
+        db.close()
 
-    conn.commit()
-    conn.close()
-def search_conversations(
-    query,
-    user_id
-):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT id, title, created_at
-    FROM conversations
-    WHERE user_id = ?
-    AND title LIKE ?
-    ORDER BY id DESC
-    """, (
-        user_id,
-        f"%{query}%"
-    ))
-
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    return rows
-
-def delete_conversation(
-    conversation_id,
-    user_id
-):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    DELETE FROM conversations
-    WHERE id = ?
-    AND user_id = ?
-    """, (
-        conversation_id,
-        user_id
-    ))
-
-    conn.commit()
-    conn.close()
-def get_stats():
-    
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "SELECT COUNT(*) FROM documents"
-    )
-    documents = cursor.fetchone()[0]
-
-    cursor.execute(
-        "SELECT COUNT(*) FROM conversations"
-    )
-    conversations = cursor.fetchone()[0]
-
-    cursor.execute(
-        "SELECT COUNT(*) FROM messages"
-    )
-    messages = cursor.fetchone()[0]
-
-    conn.close()
-
-    return {
-        "documents": documents,
-        "conversations": conversations,
-        "messages": messages,
-    }
-def create_user(
-    username: str,
-    email: str,
-    password_hash: str
-):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        INSERT INTO users
-        (username, email, password_hash)
-        VALUES (?, ?, ?)
-    """, (
-        username,
-        email,
-        password_hash
-    ))
-
-    conn.commit()
-    conn.close()
-def get_user_by_username(username: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT *
-        FROM users
-        WHERE username = ?
-    """, (username,))
-
-    user = cursor.fetchone()
-
-    conn.close()
-
-    return user
-def get_conversation_owner(
-    conversation_id
-):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT user_id
-    FROM conversations
-    WHERE id = ?
-    """, (conversation_id,))
-
-    row = cursor.fetchone()
-
-    conn.close()
-
-    return row
-def get_conversation_user_id(conversation_id):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT user_id
-        FROM conversations
-        WHERE id = ?
-    """, (conversation_id,))
-
-    row = cursor.fetchone()
-
-    conn.close()
-
-    if row:
-        return row[0]
-
-    return None
-
-def create_document(
-    user_id,
-    filename
-):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    INSERT INTO documents(
-        user_id,
-        filename
-    )
-    VALUES (?, ?)
-    """, (
-        user_id,
-        filename
-    ))
-
-    conn.commit()
-    conn.close()
-def list_documents_by_user(
-    user_id
-):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT filename
-    FROM documents
-    WHERE user_id = ?
-    ORDER BY id DESC
-    """, (user_id,))
-
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    return rows
-
-def delete_document_by_user(
-    filename,
-    user_id
-):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    DELETE FROM documents
-    WHERE filename = ?
-    AND user_id = ?
-    """, (
-        filename,
-        user_id
-    ))
-
-    deleted = cursor.rowcount
-
-    conn.commit()
-    conn.close()
-
-    return deleted > 0
-
-def owns_document(
-    filename,
-    user_id
-):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT id
-    FROM documents
-    WHERE filename = ?
-    AND user_id = ?
-    """, (
-        filename,
-        user_id
-    ))
-
-    row = cursor.fetchone()
-
-    conn.close()
-
-    return row is not None
+def get_stats(workspace_id: int | None = None):
+    db = next(get_db())
+    try:
+        doc_q = db.query(Document)
+        conv_q = db.query(Conversation)
+        msg_q = db.query(Message).join(Conversation)
+        
+        if workspace_id:
+            doc_q = doc_q.filter(Document.workspace_id == workspace_id)
+            conv_q = conv_q.filter(Conversation.workspace_id == workspace_id)
+            msg_q = msg_q.filter(Conversation.workspace_id == workspace_id)
+            
+        docs = doc_q.count()
+        convs = conv_q.count()
+        msgs = msg_q.count()
+        
+        return {
+            "documents": docs,
+            "conversations": convs,
+            "messages": msgs,
+        }
+    finally:
+        db.close()

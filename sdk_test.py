@@ -7,7 +7,7 @@ response = chat(
             "role": "user",
             "content": "Describe this image.",
             "images": [
-                "storage/uploads/91/e7942197896e48a494c49900103f9122.jpeg"
+                "app/ui/assets/brain.png"
             ],
         }
     ],
