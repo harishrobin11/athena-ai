@@ -35,7 +35,7 @@ services:
     routes:
       - type: rewrite
         source: /api/*
-        destination: https://athena-backend.onrender.com/api/*
+        destination: http://athena-backend:8000/api/*
       - type: rewrite
         source: /*
         destination: /index.html
