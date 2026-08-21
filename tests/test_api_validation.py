@@ -2,11 +2,6 @@ import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 
-@pytest.fixture
-def client():
-    with TestClient(app) as c:
-        yield c
-
 def test_register_validation_error(client):
     # Send an invalid payload (missing password, short username)
     response = client.post("/register", json={

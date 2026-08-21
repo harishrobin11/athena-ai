@@ -101,11 +101,21 @@ class Document(Base):
     tags = relationship("Tag", secondary="document_tags", back_populates="documents")
 
 
+class Collection(Base):
+    __tablename__ = "collections"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Tag(Base):
     __tablename__ = "tags"
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
+    color = Column(String(50), default="#3b82f6", nullable=False)
     workspace_id = Column(Integer, ForeignKey("workspaces.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
@@ -130,3 +140,23 @@ class MarketplaceItem(Base):
     payload = Column(Text, nullable=False)
     is_published = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class TokenUsage(Base):
+    __tablename__ = "token_usage"
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    tokens = Column(Integer, nullable=False)
+    model = Column(String(255), nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+
+class InstalledItem(Base):
+    __tablename__ = "installed_items"
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    item_id = Column(Integer, ForeignKey("marketplace_items.id", ondelete="CASCADE"), nullable=False)
+    installed_at = Column(DateTime, default=datetime.utcnow)

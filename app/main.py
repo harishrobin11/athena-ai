@@ -4,6 +4,7 @@ Description: Initializes the FastAPI application state and mounts
              the unified routing engine.
 """
 
+import os
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
@@ -98,9 +99,14 @@ except Exception as e:
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Enable CORS so your React UI can communicate cleanly
+allowed_origins = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:5173,http://localhost:3000,http://localhost,https://athena-frontend.onrender.com"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://localhost"],
+    allow_origins=[origin.strip() for origin in allowed_origins if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
