@@ -107,6 +107,7 @@ allowed_origins = os.getenv(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in allowed_origins if origin.strip()],
+    allow_origin_regex=r"https://athena-frontend(-[a-zA-Z0-9]+)?\.onrender\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
