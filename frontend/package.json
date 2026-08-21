@@ -16,14 +16,18 @@
     "recharts": "^3.9.2"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.3",
+    "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.5.4",
     "oxlint": "^1.71.0",
     "postcss": "^8.5.19",
-    "@tailwindcss/postcss": "^4.0.0",
     "tailwindcss": "^4.3.3",
-    "vite": "^8.1.1"
+    "vite": "^5.4.11"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-darwin-arm64": "^1.1.5",
+    "@rolldown/binding-darwin-x64": "^1.1.5"
   }
 }

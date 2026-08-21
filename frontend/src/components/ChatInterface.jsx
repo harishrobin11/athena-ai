@@ -160,7 +160,7 @@ export default function ChatInterface({
                     msg.id === assistantId ? { ...msg, content: accumText } : msg
                   ))
                 } else if (data.event_type === 'token') {
-                  accumText = data.content
+                  accumText += data.content
                   setMessages(prev => prev.map(msg =>
                     msg.id === assistantId ? { ...msg, content: accumText } : msg
                   ))

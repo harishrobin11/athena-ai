@@ -136,9 +136,15 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"error": {"code": "INTERNAL_ERROR", "message": "An unexpected error occurred."}},
     )
 
+from fastapi.responses import RedirectResponse
+
 @app.get("/", tags=["Health"])
 async def root_health_check():
     return {"status": "online", "system": "Athena-AI Core Gateway"}
+
+@app.get("/docs", include_in_schema=False)
+async def redirect_docs():
+    return RedirectResponse(url="/api/docs")
 
 # 1. Mount the Conversational Agent Stream Gateway (/api/v1/agent/chat)
 app.include_router(agent_router, prefix="/api/v1", tags=["Agent"])

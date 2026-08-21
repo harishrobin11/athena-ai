@@ -42,11 +42,25 @@ class VectorStore:
             from langchain_chroma import Chroma
         except ImportError:
             from langchain_community.vectorstores import Chroma
-        return Chroma(
-            collection_name=chroma_collection,
-            persist_directory=self.persist_directory,
-            embedding_function=self.embedding,
-        )
+        try:
+            return Chroma(
+                collection_name=chroma_collection,
+                persist_directory=self.persist_directory,
+                embedding_function=self.embedding,
+            )
+        except Exception as e:
+            print(f"[CHROMA RECOVERY] Recovering Chroma index at {self.persist_directory}: {e}")
+            import os, shutil
+            if os.path.exists(self.persist_directory):
+                try:
+                    shutil.rmtree(self.persist_directory)
+                except Exception:
+                    pass
+            return Chroma(
+                collection_name=chroma_collection,
+                persist_directory=self.persist_directory,
+                embedding_function=self.embedding,
+            )
 
     def add_documents(self, documents: List[Any], dept_id: str = "GENERAL"):
         """Adds documents into the isolated tenant collection space."""

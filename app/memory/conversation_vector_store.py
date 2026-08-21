@@ -32,10 +32,24 @@ class ConversationVectorStore:
             from langchain_chroma import Chroma
         except ImportError:
             from langchain_community.vectorstores import Chroma
-        self.db = Chroma(
-            persist_directory=persist_directory,
-            embedding_function=self.embedding,
-        )
+
+        try:
+            self.db = Chroma(
+                persist_directory=persist_directory,
+                embedding_function=self.embedding,
+            )
+        except Exception as e:
+            print(f"[CHROMA RECOVERY] Recovering Chroma index at {persist_directory}: {e}")
+            import os, shutil
+            if os.path.exists(persist_directory):
+                try:
+                    shutil.rmtree(persist_directory)
+                except Exception:
+                    pass
+            self.db = Chroma(
+                persist_directory=persist_directory,
+                embedding_function=self.embedding,
+            )
 
     def add_message(
         self,

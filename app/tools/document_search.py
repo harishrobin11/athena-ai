@@ -52,7 +52,14 @@ def search_documents_tool(
         filter_metadata=filter_metadata,
     )
 
+    def _extract_text(doc):
+        if hasattr(doc, "page_content"):
+            return doc.page_content
+        if isinstance(doc, dict):
+            return doc.get("document", str(doc))
+        return str(doc)
+
     return "\n\n".join(
-        doc["document"]
+        _extract_text(doc)
         for doc in docs
     )

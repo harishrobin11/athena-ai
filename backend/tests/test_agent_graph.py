@@ -98,5 +98,5 @@ async def test_supervisor_finishes_execution():
         "context_metadata": {}
     }
 
-    result = await app.ainvoke(initial_state)
+    result = await app.ainvoke(initial_state, config={"configurable": {"thread_id": "test_thread"}})
     assert result["next_step"] == "FINISH"

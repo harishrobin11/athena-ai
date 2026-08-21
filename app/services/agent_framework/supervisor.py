@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage, HumanMessage
 from langchain_openai import AzureChatOpenAI
 from app.services.agent_framework.state import AthenaAgentState
 
@@ -37,13 +37,12 @@ else:
         base_url=f"{_ollama_host}/v1",
         temperature=0,
         streaming=True,
-        timeout=60.0,
+        timeout=120.0,
         extra_body={
             "keep_alive": -1,
             "options": {
-                "num_thread": 8,
-                "num_ctx": 1024,
-                "num_predict": 300
+                "num_ctx": 2048,
+                "num_predict": 512
             }
         }
     )
@@ -627,6 +626,165 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
         except Exception as e:
             print(f"[MEMORY LOG] Error retrieving memories fallback in final_synthesis: {e}")
 
+def synthesize_offline_response(user_query: str, worker_facts: list, facts_context: str, dept: str) -> str:
+    query_str = (user_query or "").strip()
+    query_lower = query_str.lower()
+    full_text = "\n\n".join(worker_facts) if worker_facts else facts_context
+
+    import re, datetime
+
+    # 1. High-Precision Math Evaluation (e.g. 2+2=?, 15*8, calculate 100/4)
+    expr_text = re.sub(r'^(?:what is|calculate|compute|eval|evaluate)\s+', '', query_str, flags=re.IGNORECASE)
+    expr_text = re.sub(r'[\=\?]+$', '', expr_text).strip()
+    if expr_text and re.match(r'^[0-9\.\s\+\-\*\/\%\(\)\^]+$', expr_text):
+        expr_python = expr_text.replace('^', '**')
+        try:
+            res = eval(expr_python, {'__builtins__': None}, {})
+            if isinstance(res, float) and res.is_integer():
+                res = int(res)
+            return f"**Calculation Result:**\n\n`{expr_text}` = **{res}**"
+        except Exception:
+            pass
+
+    # 2. Time & Date Queries (e.g. what time is it?, what date is today?)
+    time_keywords = ["what time", "current time", "what is time", "time now", "tell me the time", "current date", "what date", "today date", "today's date", "what is the date"]
+    if any(kw in query_lower for kw in time_keywords):
+        now = datetime.datetime.now()
+        formatted_date = now.strftime("%A, %B %d, %Y")
+        formatted_time = now.strftime("%I:%M:%S %p")
+        return f"**Current Date & Time:**\n\n📅 **Date:** {formatted_date}\n⏰ **Time:** {formatted_time}"
+
+    # 3. Image Visual Analysis Formatting — pass through actual worker results
+    if "Image Visual Analysis" in full_text or "Vision Image Analysis" in full_text:
+        fn_match = re.search(r"Analysis for '([^']+)'", full_text)
+        filename_str = fn_match.group(1) if fn_match else "Uploaded Image"
+        
+        # Extract the actual vision model output (not a hardcoded template)
+        vision_match = re.search(r"Vision Image Analysis for '[^']+':\n\n(.*)", full_text, re.DOTALL)
+        if vision_match:
+            vision_text = vision_match.group(1).strip()
+            return f"### Image Analysis\n\n**File:** `{filename_str}`\n\n{vision_text}"
+        
+        ocr_match = re.search(r"\[Extracted Text \& Diagram Labels\]:\n(.*)", full_text, re.DOTALL)
+        extracted_text = ocr_match.group(1).strip() if ocr_match else ""
+        
+        if extracted_text:
+            return f"### Image & Visual Content Analysis\n\n**File:** `{filename_str}`\n\n**Extracted Text & Labels:**\n\n{extracted_text}"
+        
+        # Return whatever the worker actually produced, not a hardcoded template
+        clean_vision = full_text.replace("[Worker Result]:", "").strip()
+        if clean_vision:
+            return f"### Image Analysis\n\n**File:** `{filename_str}`\n\n{clean_vision}"
+        
+        return f"### Image Analysis\n\n**File:** `{filename_str}`\n\nThe image was uploaded but the vision model could not process it. Please try uploading the image again."
+
+    clean_lines = []
+    if full_text:
+        for line in full_text.splitlines():
+            l_str = line.strip()
+            if l_str and not l_str.startswith("[Worker Result]") and not l_str.startswith("[Retrieved Context"):
+                clean_lines.append(l_str)
+    
+    clean_full_text = "\n".join(clean_lines)
+
+    # 4. Author / Publisher queries
+    if any(q in query_lower for q in ["author", "who wrote", "created by", "written by", "publisher", "issued by", "who is author"]):
+        if clean_full_text:
+            patterns = [
+                r'(Government of India[^\.\n,]*)',
+                r'(Ministry of [^\.\n,]*)',
+                r'(Department of [^\.\n,]*)',
+                r'(Author:\s*[^\.\n]+)',
+                r'(Issued by:\s*[^\.\n]+)',
+                r'(Prepared by:\s*[^\.\n]+)'
+            ]
+            matches = []
+            for pat in patterns:
+                found = re.findall(pat, clean_full_text, re.IGNORECASE)
+                if found:
+                    matches.extend(found)
+            
+            if matches:
+                author_str = matches[0].strip()
+                return f"**Author & Issuing Authority:**\nBased on the document context, the issuing authority / author is **{author_str}**."
+            
+            non_empty_lines = [l for l in clean_lines if len(l) > 5]
+            if non_empty_lines:
+                return f"**Author / Document Origin:**\nBased on the document context, this document is issued under: **{non_empty_lines[0]}**."
+
+        return f"Please select or upload a document from your enterprise vault to query its author and origin."
+
+    # 5. "what is this?" / Overview / Summary queries
+    if any(q in query_lower for q in ["what is this", "summarize", "summary", "overview", "what document", "explain document", "about"]):
+        if clean_full_text:
+            header_lines = [l for l in clean_lines if len(l) > 10][:5]
+            snippet = "\n".join(header_lines) if header_lines else clean_full_text[:400]
+            return f"### Document Overview & Key Extracts\n\n{snippet}"
+
+        return "This is your enterprise AI assistant. Upload or select a document from the left sidebar to analyze its contents."
+
+    # 6. Targeted sentence matching for specific user queries
+    if clean_full_text:
+        query_words = [w for w in re.findall(r'\w+', query_lower) if len(w) > 3 and w not in ["what", "where", "when", "which", "how", "does", "is", "the", "that", "this", "them"]]
+        matching_sentences = []
+        for line in clean_lines:
+            if any(qw in line.lower() for qw in query_words):
+                matching_sentences.append(line)
+        
+        if matching_sentences:
+            extracted_facts = "\n• " + "\n• ".join(matching_sentences[:5])
+            return f"### Answer Grounded in Document Context\n{extracted_facts}"
+
+        excerpt = "\n".join(clean_lines[:6])
+        return f"### Relevant Document Context\n\n{excerpt}"
+
+    # General fallback — answer common questions directly
+    import datetime as _dt
+    now = _dt.datetime.now()
+    
+    # Catch-all for time queries that weren't matched above
+    if any(kw in query_lower for kw in ["time", "date", "clock", "day is it"]):
+        formatted_date = now.strftime("%A, %B %d, %Y")
+        formatted_time = now.strftime("%I:%M:%S %p")
+        return f"📅 **Date:** {formatted_date}\n⏰ **Time:** {formatted_time}"
+    
+    # Catch-all for thanks / goodbye
+    if any(kw in query_lower for kw in ["thank", "thanks", "appreciate"]):
+        return "You're very welcome! Let me know if there's anything else I can help you with."
+    if any(kw in query_lower for kw in ["bye", "goodbye", "see you"]):
+        return "Goodbye! Have a wonderful day, and feel free to reach out whenever you need assistance."
+    if any(kw in query_lower for kw in ["ok", "okay", "understand"]):
+        return "Sounds good! Let me know how you'd like to proceed or if you have other questions."
+    
+    # For any other general question, give a helpful response
+    return f"I'm Athena AI, your assistant. I can answer general questions, analyze documents, and help with many tasks. What would you like to know?"
+
+
+async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
+    """
+    Consolidates agent thoughts, retrieved documents, database data,
+    and memories into a final polished executive output.
+    """
+    dept = state.get("department_boundary", "GENERAL")
+    
+    import datetime
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    # Sprint 14: Fetch User Semantic Memories
+    user_memories = []
+    try:
+        from app.memory.store import search_memories
+        user_id = str(state.get("user_id", "default"))
+        user_memories = search_memories(user_id=user_id, query="user preferences department identity facts", top_k=3)
+    except Exception as e:
+        print(f"[FINAL SYNTHESIS] Error retrieving user memories: {e}")
+
+    # Format memories string if present
+    memories_str = ""
+    if user_memories:
+        memories_str = "\n[User Preferences & Long-Term Semantic Memory]:\n" + "\n".join(user_memories)
+
+    combined_m = state.get("context_metadata", {}).get("user_memories", [])
     if combined_m:
         memories_str = "\n[Recall of Facts & Profile From Past Chats]:\n" + "\n".join(combined_m)
     
@@ -642,7 +800,8 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
         text = str(getattr(msg, "content", ""))
         if "[Worker Result]" in text or "Retrieved context:" in text:
             clean_text = text.replace("[Worker Result]:", "").strip()
-            worker_facts.append(clean_text)
+            if "No specific document matches found" not in clean_text:
+                worker_facts.append(clean_text)
 
     facts_context = ("\n\n[Retrieved Context & Data]:\n" + "\n".join(worker_facts)) if worker_facts else ""
 
@@ -659,14 +818,33 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
 
     sys_msg = SystemMessage(
         content=(
-            f"You are Athena AI, an intelligent Enterprise Knowledge Assistant for the {dept} department. Current system date and time: {current_time}. {memories_str}\n{facts_context}\n\n"
+            f"You are Athena AI, an intelligent and conversational AI assistant for the {dept} department. "
+            f"Current system date and time: {current_time}. {memories_str}\n{facts_context}\n\n"
+            "CORE BEHAVIOR — You are a GENERAL-PURPOSE AI assistant. You can:\n"
+            "- Answer ANY general knowledge question accurately and thoroughly\n"
+            "- Have natural conversations, explain concepts, write code, solve problems\n"
+            "- Tell the current time/date when asked (use the system time provided above)\n"
+            "- Analyze documents and data when provided by workers\n\n"
             "Instructions:\n"
             "1. If relevant enterprise documents or worker results are provided above, prioritize them to answer the user query.\n"
-            "2. If no specific enterprise documents were found in the vault, answer the user query thoroughly, accurately, and helpfully using your general AI knowledge (including answering current time/date queries accurately).\n"
-            "3. Do NOT state that you lack information or refuse to answer simply because a document was not uploaded, unless the user explicitly requested a specific missing file.\n"
-            "4. Do not cite internal system tags, worker labels, or metadata.\n"
-            "5. If the user asks for a diagram, flowchart, architecture, visual breakdown, ASCII diagram, or sequence diagram, provide a clean ASCII art box diagram (using +---+ boxes and arrows --->) AND/OR a Mermaid diagram code block (```mermaid ... ```) to visually illustrate the components.\n"
-            "6. When answering from document context, cite targeted section facts or page numbers rather than dumping raw file text."
+            "2. If no specific enterprise documents were found, answer the user query thoroughly and helpfully using your general AI knowledge. You are NOT limited to document queries — answer ANY question the user asks.\n"
+            "3. For time/date questions: Use the 'Current system date and time' value provided above to give an accurate answer.\n"
+            "4. Do NOT state that you lack information or refuse to answer simply because a document was not uploaded. Only mention missing documents if the user explicitly asked about a specific file.\n"
+            "5. Do not cite internal system tags, worker labels, or metadata.\n"
+            "6. DIAGRAMS: If the user asks for a diagram, flowchart, architecture, visual breakdown, or any structural visualization, you MUST provide:\n"
+            "   a) A clean ASCII art box diagram using characters like +, -, |, > for boxes and arrows\n"
+            "   b) AND/OR a Mermaid diagram code block (```mermaid ... ```)\n"
+            "   Example ASCII style:\n"
+            "   +----------------+     +----------------+\n"
+            "   |   Frontend     | --> |   Backend API  |\n"
+            "   +----------------+     +----------------+\n"
+            "                                |\n"
+            "                                v\n"
+            "                         +----------------+\n"
+            "                         |   Database     |\n"
+            "                         +----------------+\n"
+            "7. When answering from document context, cite targeted section facts or page numbers rather than dumping raw file text.\n"
+            "8. Be conversational, helpful, and thorough. Give complete answers, not one-liners."
         )
     )
     
@@ -690,7 +868,7 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
                     full_text += c_text
             return AIMessage(content=full_text)
             
-        response = await asyncio.wait_for(_stream_llm(), timeout=25.0)
+        response = await asyncio.wait_for(_stream_llm(), timeout=90.0)
         
         # Guard against false-positive safety refusals on benign enterprise queries
         refusal_keywords = [
@@ -710,13 +888,7 @@ async def final_synthesis_node(state: AthenaAgentState) -> Dict[str, Any]:
             response = AIMessage(content="### Athena Knowledge & Document Synthesis\n\n" + synth_content)
     except Exception as e:
         print(f"[LLM FALLBACK WARNING] LLM invoke failed or timed out in final_synthesis: {e}")
-        if worker_facts:
-            synthesized_text = "### Athena Document & Knowledge Synthesis\n\n" + "\n\n---\n\n".join(worker_facts)
-        elif facts_context:
-            synthesized_text = "### Athena Knowledge Synthesis\n\n" + facts_context
-        else:
-            synthesized_text = "Hello! How can I assist you with your workspace tasks today?"
-            
+        synthesized_text = synthesize_offline_response(user_query, worker_facts, facts_context, dept)
         response = AIMessage(content=synthesized_text)
 
     

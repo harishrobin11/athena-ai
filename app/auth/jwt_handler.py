@@ -9,7 +9,7 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 
 def create_access_token(data: dict):
-    payload = data.copy()
+    payload = data.copy() 
     expire = datetime.utcnow() + timedelta(
         minutes=ACCESS_TOKEN_EXPIRE_MINUTES
     )

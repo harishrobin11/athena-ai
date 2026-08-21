@@ -11,7 +11,7 @@ from typing import List, Dict, Any, Generator
 import ollama
 
 import os
-TEXT_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+TEXT_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
 VISION_MODEL = "moondream:latest"
 
 

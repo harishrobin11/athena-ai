@@ -10,22 +10,26 @@ jobs:
   test-and-build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Python 3.11
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install pytest pytest-asyncio httpx
+        pip install --extra-index-url https://download.pytorch.org/whl/cpu torch==2.2.2+cpu
         pip install -r requirements.txt
-        pip install pytest
 
     - name: Run Tests
+      env:
+        SECRET_KEY: "ci-secret-key-testing-12345"
+        OPENAI_API_KEY: "ci-openai-api-key-testing"
       run: |
-        pytest tests/ || echo "Tests passed or ignored"
+        pytest tests/ -v
 
     - name: Build Docker Image
       run: |

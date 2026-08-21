@@ -9,9 +9,10 @@ Available sub-agents you can route tasks to:
 1. 'rag_worker': Specialized in searching, fetching, parsing, and contextualizing corporate documents, PDFs, tables, internal enterprise knowledge fields, and PAST CONVERSATION HISTORY (Memory Vault).
 2. 'code_worker': Specialized in running explicit algorithmic logic, data processing operations, numbers math, and structural visualization queries.
 3. 'research_worker': Specialized in multi-step internet searches, web scraping, scientific paper summarization, and verifying external facts (Sprint 19).
-4. 'document_worker': Specialized in deep, visual PDF analysis, large-scale textual knowledge extraction, and complex table understanding workflows (Sprint 20).
+4. 'document_worker': Specialized in deep, visual PDF analysis, large-scale textual knowledge extraction, complex table understanding workflows, AND image/vision analysis using multimodal AI (Sprint 20).
 5. 'sql_worker': Specialized in generating secure SQL dialects, running dynamic relational database queries, and charting data analytics (Sprint 21).
 6. 'workflow_worker': Specialized in multi-step automation, calling external APIs, and scheduling background cron tasks (Sprint 23).
+7. 'image_worker': Specialized in generating images using local AI models when user requests image creation.
 
 Operational Instructions:
 - Deconstruct complex, multi-step requests into actionable tasks.
@@ -21,12 +22,14 @@ Operational Instructions:
 - If the user asks to query a database, analyze raw relational data, or run SQL metrics, output 'sql_worker'.
 - If the user asks for numbers math, visualization, or structural logic, output 'code_worker'.
 - If the user asks to automate a multi-step sequence, trigger an external API, or schedule a recurring background task, output 'workflow_worker'.
+- If the user asks to generate, create, or draw an image, output 'image_worker'.
+- If the user asks a general knowledge question, wants conversation, asks for current time/date, asks for a diagram/flowchart, or asks for explanations, output 'FINISH' so the final synthesis LLM can answer directly.
 - IMPORTANT MULTI-AGENT CHAINING: Review the conversation history. If the user provided a multi-step request (e.g. "fetch data from SQL then calculate math on it") and only the FIRST step has been completed (e.g. you see a [Worker Result] from sql_worker), you MUST route to the NEXT appropriate worker (e.g. code_worker) rather than FINISH. Keep evaluating the `execution_plan` until ALL steps are solved.
 - ONLY output 'FINISH' if the complete multi-step request has been fully satisfied by the workers, or if it is a simple request that requires direct casual conversation.
 - Respond ONLY with a clean, unquoted JSON object matching this exact schema:
 {{
   "execution_plan": ["Step 1 description", "Step 2 description"],
-  "next_step": "rag_worker" | "code_worker" | "research_worker" | "document_worker" | "sql_worker" | "workflow_worker" | "FINISH",
+  "next_step": "rag_worker" | "code_worker" | "research_worker" | "document_worker" | "sql_worker" | "workflow_worker" | "image_worker" | "FINISH",
   "reasoning": "Brief technical justification for the routing choice."
 }}
 """
@@ -58,35 +61,37 @@ class AthenaSupervisorOrchestrator:
         if has_worker_result:
             return {"next_step": "FINISH", "execution_plan": []}
 
-        # Fast-Path 2: Direct heuristic routing for PDFs/docs/search/code/queries
+        # Fast-Path 2: Direct heuristic routing based on attachments
         is_image_attachment = any(str(doc).lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')) for doc in selected_docs)
+        is_pdf_attachment = any(str(doc).lower().endswith('.pdf') for doc in selected_docs)
+        
         if is_image_attachment:
             return {
                 "next_step": "document_worker",
                 "execution_plan": ["Analyze image using vision AI worker"]
             }
-        elif any(kw in user_msg for kw in ["generate image", "create image", "draw image", "make an image", "generate an image", "generate a picture", "create a picture", "draw a", "generate graphic", "create graphic"]):
+        elif any(kw in user_msg for kw in ["generate image", "create image", "draw image", "make an image", "generate an image", "generate a picture", "create a picture", "draw a picture", "generate graphic", "create graphic"]):
             return {
                 "next_step": "image_worker",
                 "execution_plan": ["Generate image using local AI image generator worker"]
             }
-        elif selected_docs or any(kw in user_msg for kw in ["pdf", "document", "file", "uploaded", "invoice", "extract", "summary", "analyze", "read"]):
+        elif is_pdf_attachment or any(kw in user_msg for kw in ["pdf", "document", "file", "uploaded", "invoice", "extract"]):
             return {
                 "next_step": "rag_worker",
                 "execution_plan": ["Retrieve and analyze document context from vector vault"]
             }
-        elif any(kw in user_msg for kw in ["search", "web", "google", "internet", "news", "latest"]):
+        elif any(kw in user_msg for kw in ["search the web", "google", "internet", "news", "latest"]):
             return {
                 "next_step": "research_worker",
                 "execution_plan": ["Perform live internet search"]
             }
-        elif any(kw in user_msg for kw in ["sql", "database", "query", "table", "sales"]):
+        elif any(kw in user_msg for kw in ["sql", "database", "query table", "sales data"]):
             return {
                 "next_step": "sql_worker",
                 "execution_plan": ["Query relational database"]
             }
 
-        # Fast-Path 3: Instant response for general chat and questions (bypasses 4s LLM router delay)
+        # Fast-Path 3: General questions, diagrams, time, conversations → FINISH for direct LLM answer
         return {
             "next_step": "FINISH",
             "execution_plan": ["Generate direct AI response"]
