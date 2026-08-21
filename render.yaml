@@ -21,10 +21,6 @@ services:
         sync: false
       - key: TARGET_LLM_MODEL
         value: gpt-4o-mini
-    disk:
-      name: athena-storage
-      mountPath: /app/storage
-      sizeGB: 1
 
   # 2. React Frontend Static Site
   - type: web
@@ -34,10 +30,10 @@ services:
     publishDir: frontend/dist
     routes:
       - type: rewrite
-        path: /api/*
+        source: /api/*
         destination: https://athena-backend.onrender.com/api/*
       - type: rewrite
-        path: /*
+        source: /*
         destination: /index.html
 
 # 3. Managed PostgreSQL Database
