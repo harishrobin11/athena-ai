@@ -26,8 +26,12 @@ services:
   - type: web
     name: athena-frontend
     runtime: static
-    buildCommand: cd frontend && npm install --legacy-peer-deps && npm run build
-    staticPublishPath: frontend/dist
+    rootDir: frontend
+    buildCommand: npm install --legacy-peer-deps && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
     routes:
       - type: rewrite
         source: /api/*
