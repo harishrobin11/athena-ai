@@ -32,10 +32,12 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: VITE_API_URL
+        fromService:
+          name: athena-backend
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
     routes:
-      - type: rewrite
-        source: /api/*
-        destination: http://athena-backend:8000/api/*
       - type: rewrite
         source: /*
         destination: /index.html

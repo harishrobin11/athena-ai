@@ -36,28 +36,19 @@ export default function Dashboard() {
     let reconnectTimeout = null
     let isUnmounted = false
 
-    const connect = async () => {
+    const connect = () => {
       if (isUnmounted) return
       
+      const baseUrl = import.meta.env.VITE_API_URL || window.location.origin
       let wsUrl = ""
       try {
-        const response = await fetch('/api/v1/metrics/config')
-        const config = await response.json()
-        if (config.backend_url) {
-          const url = new URL(config.backend_url)
-          const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
-          wsUrl = `${protocol}//${url.host}/api/v1/metrics/live`
-        }
-      } catch (err) {
-        console.error("Failed to fetch system config:", err)
-      }
-
-      if (!wsUrl) {
+        const url = new URL(baseUrl)
+        const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+        wsUrl = `${protocol}//${url.host}/api/v1/metrics/live`
+      } catch (e) {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
         wsUrl = `${protocol}//${window.location.host}/api/v1/metrics/live`
       }
-
-      if (isUnmounted) return
       
       try {
         ws = new WebSocket(wsUrl)
