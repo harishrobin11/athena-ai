@@ -1,28 +1,25 @@
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+import os
 
-# PostgreSQL or SQLite Engine Binding
-SQLALCHEMY_DATABASE_URL = os.getenv(
-    "DATABASE_URL", 
-    "sqlite:///./data/athena.db"
+# Database URL - use SQLite by default
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./athena.db")
+
+# Create engine
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
 )
 
-if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
-    db_path = SQLALCHEMY_DATABASE_URL.replace("sqlite:///", "")
-    if "/" in db_path:
-        db_dir = os.path.dirname(db_path)
-        if db_dir:
-            os.makedirs(db_dir, exist_ok=True)
-
-connect_args = {"check_same_thread": False} if SQLALCHEMY_DATABASE_URL.startswith("sqlite") else {}
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args=connect_args)
-
+# Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Create declarative base for models
 Base = declarative_base()
 
+
 def get_db():
+    """Dependency for FastAPI to get database session"""
     db = SessionLocal()
     try:
         yield db
