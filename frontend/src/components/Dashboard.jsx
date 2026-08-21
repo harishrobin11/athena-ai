@@ -36,17 +36,28 @@ export default function Dashboard() {
     let reconnectTimeout = null
     let isUnmounted = false
 
-    const connect = () => {
+    const connect = async () => {
       if (isUnmounted) return
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      let backendHost = window.location.host
-      if (window.location.hostname.endsWith('.onrender.com')) {
-        const namePart = window.location.hostname.split('.')[0]
-        const suffixMatch = namePart.match(/athena-frontend(.*)/)
-        const suffix = suffixMatch ? suffixMatch[1] : ""
-        backendHost = `athena-backend${suffix}.onrender.com`
+      
+      let wsUrl = ""
+      try {
+        const response = await fetch('/api/v1/metrics/config')
+        const config = await response.json()
+        if (config.backend_url) {
+          const url = new URL(config.backend_url)
+          const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+          wsUrl = `${protocol}//${url.host}/api/v1/metrics/live`
+        }
+      } catch (err) {
+        console.error("Failed to fetch system config:", err)
       }
-      const wsUrl = `${protocol}//${backendHost}/api/v1/metrics/live`
+
+      if (!wsUrl) {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+        wsUrl = `${protocol}//${window.location.host}/api/v1/metrics/live`
+      }
+
+      if (isUnmounted) return
       
       try {
         ws = new WebSocket(wsUrl)

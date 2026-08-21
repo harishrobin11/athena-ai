@@ -10,6 +10,12 @@ workflow_executions = {"success": 85, "failed": 15}
 active_agents = 24
 total_executions = 12403
 
+@router.get("/metrics/config")
+def get_metrics_config():
+    import os
+    return {"backend_url": os.getenv("RENDER_EXTERNAL_URL")}
+
+
 @router.websocket("/metrics/live")
 async def websocket_metrics(websocket: WebSocket):
     await websocket.accept()
