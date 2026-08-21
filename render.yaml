@@ -1,0 +1,50 @@
+services:
+  # 1. FastAPI Backend Web Service
+  - type: web
+    name: athena-backend
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          name: athena-redis
+          type: redis
+          property: connectionString
+      - key: DATABASE_URL
+        fromDatabase:
+          name: athena-db
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TARGET_LLM_MODEL
+        value: gpt-4o-mini
+    disk:
+      name: athena-storage
+      mountPath: /app/storage
+      sizeGB: 1
+
+  # 2. React Frontend Static Site
+  - type: web
+    name: athena-frontend
+    env: static
+    buildCommand: cd frontend && npm install --legacy-peer-deps && npm run build
+    publishDir: frontend/dist
+    routes:
+      - type: rewrite
+        path: /api/*
+        destination: https://athena-backend.onrender.com/api/*
+      - type: rewrite
+        path: /*
+        destination: /index.html
+
+# 3. Managed PostgreSQL Database
+databases:
+  - name: athena-db
+    plan: free
+
+# 4. Managed Redis Cache
+redis:
+  - name: athena-redis
+    plan: free
+    ipAllowList: []

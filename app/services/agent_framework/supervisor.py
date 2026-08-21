@@ -31,21 +31,31 @@ if _azure_api_key and _azure_endpoint:
 else:
     _default_ollama = "http://host.docker.internal:11434" if os.path.exists("/.dockerenv") else "http://127.0.0.1:11434"
     _ollama_host = os.getenv("OLLAMA_HOST", _default_ollama)
-    azure_llm = ChatOpenAI(
-        model=_model,
-        api_key=_api_key,
-        base_url=f"{_ollama_host}/v1",
-        temperature=0,
-        streaming=True,
-        timeout=120.0,
-        extra_body={
-            "keep_alive": -1,
-            "options": {
-                "num_ctx": 2048,
-                "num_predict": 512
+    if _api_key and _api_key != "ollama" and _api_key.startswith("sk-"):
+        # standard OpenAI config for production hosting (Render/Railway)
+        azure_llm = ChatOpenAI(
+            model=os.getenv("TARGET_LLM_MODEL", "gpt-4o-mini"),
+            api_key=_api_key,
+            temperature=0,
+            streaming=True,
+            timeout=120.0
+        )
+    else:
+        azure_llm = ChatOpenAI(
+            model=_model,
+            api_key=_api_key,
+            base_url=f"{_ollama_host}/v1",
+            temperature=0,
+            streaming=True,
+            timeout=120.0,
+            extra_body={
+                "keep_alive": -1,
+                "options": {
+                    "num_ctx": 2048,
+                    "num_predict": 512
+                }
             }
-        }
-    )
+        )
 
 
 
