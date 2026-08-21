@@ -41,7 +41,10 @@ export default function Dashboard() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       let backendHost = window.location.host
       if (window.location.hostname.endsWith('.onrender.com')) {
-        backendHost = 'athena-backend.onrender.com'
+        const namePart = window.location.hostname.split('.')[0]
+        const suffixMatch = namePart.match(/athena-frontend(.*)/)
+        const suffix = suffixMatch ? suffixMatch[1] : ""
+        backendHost = `athena-backend${suffix}.onrender.com`
       }
       const wsUrl = `${protocol}//${backendHost}/api/v1/metrics/live`
       
