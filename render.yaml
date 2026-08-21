@@ -23,9 +23,8 @@ services:
         value: gpt-4o-mini
 
   # 2. React Frontend Static Site
-  - type: web
+  - type: static
     name: athena-frontend
-    env: static
     buildCommand: cd frontend && npm install --legacy-peer-deps && npm run build
     publishPath: frontend/dist
     routes:
