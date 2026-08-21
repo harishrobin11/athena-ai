@@ -27,7 +27,7 @@ services:
     name: athena-frontend
     env: static
     buildCommand: cd frontend && npm install --legacy-peer-deps && npm run build
-    publishDir: frontend/dist
+    publishPath: frontend/dist
     routes:
       - type: rewrite
         source: /api/*
@@ -36,13 +36,13 @@ services:
         source: /*
         destination: /index.html
 
-# 3. Managed PostgreSQL Database
+  # 3. Managed Redis Cache
+  - type: redis
+    name: athena-redis
+    plan: free
+    ipAllowList: []
+
+# 4. Managed PostgreSQL Database
 databases:
   - name: athena-db
     plan: free
-
-# 4. Managed Redis Cache
-redis:
-  - name: athena-redis
-    plan: free
-    ipAllowList: []
