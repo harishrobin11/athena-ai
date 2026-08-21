@@ -39,7 +39,11 @@ export default function Dashboard() {
     const connect = () => {
       if (isUnmounted) return
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const wsUrl = `${protocol}//${window.location.host}/api/v1/metrics/live`
+      let backendHost = window.location.host
+      if (window.location.hostname.endsWith('.onrender.com')) {
+        backendHost = 'athena-backend.onrender.com'
+      }
+      const wsUrl = `${protocol}//${backendHost}/api/v1/metrics/live`
       
       try {
         ws = new WebSocket(wsUrl)
