@@ -2,9 +2,12 @@ import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 
-client = TestClient(app)
+@pytest.fixture
+def client():
+    with TestClient(app) as c:
+        yield c
 
-def test_register_validation_error():
+def test_register_validation_error(client):
     # Send an invalid payload (missing password, short username)
     response = client.post("/register", json={
         "username": "a", # Too short
@@ -23,7 +26,7 @@ def test_register_validation_error():
     assert "body.email" in fields_with_errors
     assert "body.password" in fields_with_errors
 
-def test_login_validation_error():
+def test_login_validation_error(client):
     response = client.post("/login", json={
         "username": "", # Too short
         # missing password
@@ -37,7 +40,7 @@ def test_login_validation_error():
     assert "body.username" in fields
     assert "body.password" in fields
 
-def test_complete_auth_and_upload_flow():
+def test_complete_auth_and_upload_flow(client):
     import uuid
     username = f"user_{uuid.uuid4().hex[:8]}"
     email = f"{username}@example.com"
