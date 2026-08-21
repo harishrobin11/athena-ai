@@ -17,6 +17,8 @@ services:
           property: connectionString
       - key: OPENAI_API_KEY
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
       - key: TARGET_LLM_MODEL
         value: gpt-4o-mini
     disk:

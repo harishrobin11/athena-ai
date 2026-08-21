@@ -11,14 +11,27 @@ import os
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
 
 _api_key = os.getenv("OPENAI_API_KEY", "ollama")
+_gemini_api_key = os.getenv("GEMINI_API_KEY")
 _model = os.getenv("TARGET_LLM_MODEL", "llama3.2:1b")
+
+if not _gemini_api_key and _api_key and _api_key.startswith("AIzaSy"):
+    _gemini_api_key = _api_key
 
 _azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
 _azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
 _azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", _model)
 _azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
 
-if _azure_api_key and _azure_endpoint:
+if _gemini_api_key:
+    azure_llm = ChatOpenAI(
+        model=os.getenv("TARGET_LLM_MODEL", "gemini-1.5-flash"),
+        api_key=_gemini_api_key,
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        temperature=0,
+        streaming=True,
+        timeout=120.0
+    )
+elif _azure_api_key and _azure_endpoint:
     azure_llm = AzureChatOpenAI(
         azure_endpoint=_azure_endpoint,
         api_key=_azure_api_key,
